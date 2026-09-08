@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1788129889222,
+      "tag": "0000_long_molecule_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788132000000,
+      "tag": "0001_smart_molly_hayes",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788135000000,
+      "tag": "0002_phase3_credentials",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788138000000,
+      "tag": "0003_phase4_volunteering",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788141000000,
+      "tag": "0004_phase5_recognition",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788144000000,
+      "tag": "0005_phase5_milestone_definitions",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788147000000,
+      "tag": "0006_phase6_operations",
+      "breakpoints": true
+    }
+  ]
+}

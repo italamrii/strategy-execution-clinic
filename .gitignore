@@ -1,0 +1,63 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# local embedded postgres data and test OTP capture
+/.data/
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# leftover scaffold folder if present
+/strategy-execution-clinic
+
+# test / playwright
+/e2e/test-results/
+/e2e/playwright-report/
+/e2e/screenshots/
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts

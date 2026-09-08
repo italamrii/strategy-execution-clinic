@@ -1,0 +1,213 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
+import type { OwnCredentialDto } from "@/modules/credentials";
+import { CredentialCardStage } from "./credential-card-stage";
+
+function statusClass(status: string) {
+  if (status === "active") return "text-success";
+  if (status === "suspended") return "text-warning";
+  return "text-danger";
+}
+
+export function StaticMembershipCard({
+  credential,
+  locale,
+}: {
+  credential: OwnCredentialDto;
+  locale: "ar" | "en";
+}) {
+  const t = useTranslations("credential");
+  const typeName =
+    locale === "ar" ? credential.membershipTypeAr : credential.membershipTypeEn;
+  const track = credential.tracks[0];
+  const trackName = track
+    ? locale === "ar"
+      ? track.nameAr
+      : track.nameEn
+    : null;
+
+  return (
+    <article
+      className="relative mx-auto w-full max-w-xl border border-line-strong bg-surface p-8 shadow-rest"
+      aria-label={t("cardLabel")}
+      data-testid="membership-card"
+      data-credential-id={credential.id}
+    >
+      <p className="text-xs tracking-[0.18em] text-gold-deep">
+        {locale === "ar" ? "عيادة الاستراتيجية والتنفيذ" : "Strategy & Execution Clinic"}
+      </p>
+      <h2 className="mt-8 text-2xl text-ink">
+        {locale === "ar" ? credential.memberNameAr : credential.memberNameEn ?? credential.memberNameAr}
+      </h2>
+      <p className="mt-2 text-graphite">{typeName}</p>
+      {trackName ? <p className="mt-1 text-sm text-muted">{trackName}</p> : null}
+      <p className="numeric mt-8 text-sm tracking-wider text-gold-deep" data-testid="public-code">
+        {credential.publicCode}
+      </p>
+      <p className={`mt-2 text-sm ${statusClass(credential.effectiveStatus)}`}>
+        {t(
+          credential.effectiveStatus === "active"
+            ? "statusActive"
+            : credential.effectiveStatus === "suspended"
+              ? "statusSuspended"
+              : credential.effectiveStatus === "expired"
+                ? "statusExpired"
+                : "statusRevoked",
+        )}
+      </p>
+    </article>
+  );
+}
+
+export function CredentialWallet({
+  credentials,
+  locale,
+}: {
+  credentials: OwnCredentialDto[];
+  locale: "ar" | "en";
+}) {
+  const t = useTranslations("credential");
+  const [activeId, setActiveId] = useState(credentials[0]?.id ?? "");
+  const active = useMemo(
+    () => credentials.find((c) => c.id === activeId) ?? credentials[0],
+    [activeId, credentials],
+  );
+
+  if (!active) {
+    return <p className="text-graphite">{t("empty")}</p>;
+  }
+
+  const verifyUrl = locale === "ar" ? active.verificationUrlAr : active.verificationUrlEn;
+
+  return (
+    <div className="space-y-8">
+      {credentials.length > 1 ? (
+        <div className="flex flex-wrap gap-2">
+          {credentials.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setActiveId(item.id)}
+              className={
+                item.id === active.id
+                  ? "border border-gold bg-surface px-3 py-2 text-sm text-navy"
+                  : "border border-line px-3 py-2 text-sm text-graphite"
+              }
+            >
+              {locale === "ar" ? item.membershipTypeAr : item.membershipTypeEn}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <CredentialCardStage credential={active} locale={locale} />
+
+      <p className="sr-only" data-testid="public-code">
+        {active.publicCode}
+      </p>
+      <span className="sr-only" data-testid="membership-card" data-credential-id={active.id} />
+
+      <div className="flex flex-col items-center gap-3 border border-line bg-surface p-6">
+        <p className="text-sm text-muted">{t("qrLabel")}</p>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`/api/verify/${encodeURIComponent(active.publicCode)}/qr?locale=${locale}`}
+          alt={t("qrAlt")}
+          width={200}
+          height={200}
+          className="border border-line bg-white p-2"
+          data-testid="credential-qr"
+        />
+        <p className="text-xs text-muted">{t("qrHint")}</p>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <a
+          href={`/api/credentials/${active.id}/export/png?locale=${locale}`}
+          className="inline-flex min-h-11 items-center bg-navy px-4 text-sm text-surface"
+        >
+          {t("downloadPng")}
+        </a>
+        <a
+          href={`/api/credentials/${active.id}/export/pdf?locale=${locale}`}
+          className="inline-flex min-h-11 items-center border border-line px-4 text-sm text-ink"
+        >
+          {t("downloadPdf")}
+        </a>
+        <a
+          href={`/api/credentials/${active.id}/export/pdf?locale=${locale}&variant=certificate`}
+          className="inline-flex min-h-11 items-center border border-line px-4 text-sm text-ink"
+        >
+          {t("downloadCertificate")}
+        </a>
+      </div>
+
+      <div className="border border-line bg-surface p-6">
+        <p className="text-sm text-muted">{t("verificationLink")}</p>
+        <p className="numeric mt-2 break-all text-sm text-ink">{verifyUrl}</p>
+        <button
+          type="button"
+          className="mt-4 text-sm text-navy"
+          onClick={() => navigator.clipboard.writeText(verifyUrl)}
+        >
+          {t("copyLink")}
+        </button>
+      </div>
+
+      <ShareKit credential={active} locale={locale} />
+    </div>
+  );
+}
+
+function ShareKit({
+  credential,
+  locale,
+}: {
+  credential: OwnCredentialDto;
+  locale: "ar" | "en";
+}) {
+  const t = useTranslations("credential");
+  const verifyUrl = locale === "ar" ? credential.verificationUrlAr : credential.verificationUrlEn;
+  const typeName =
+    locale === "ar" ? credential.membershipTypeAr : credential.membershipTypeEn;
+  const track = credential.tracks[0];
+  const trackName = track ? (locale === "ar" ? track.nameAr : track.nameEn) : "";
+  const caption =
+    locale === "ar"
+      ? `يسعدني الانضمام إلى عيادة الاستراتيجية والتنفيذ كـ ${typeName}${trackName ? ` ضمن مسار ${trackName}` : ""}.\n\n#عيادة_الاستراتيجية_والتنفيذ`
+      : `I'm pleased to join Strategy & Execution Clinic as ${typeName}${trackName ? ` in the ${trackName} track` : ""}.\n\n#StrategyExecutionClinic`;
+
+  const linkedIn = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(verifyUrl)}`;
+
+  return (
+    <section className="border border-line bg-canvas p-6">
+      <h2 className="text-lg text-ink">{t("shareTitle")}</h2>
+      <textarea
+        readOnly
+        className="mt-4 w-full border border-line bg-surface p-3 text-sm text-graphite"
+        rows={5}
+        value={caption}
+      />
+      <div className="mt-4 flex flex-wrap gap-3">
+        <button
+          type="button"
+          className="border border-line px-4 py-2 text-sm"
+          onClick={() => navigator.clipboard.writeText(caption)}
+        >
+          {t("copyCaption")}
+        </button>
+        <a href={linkedIn} target="_blank" rel="noreferrer" className="bg-navy px-4 py-2 text-sm text-surface">
+          {t("shareLinkedIn")}
+        </a>
+        <a
+          href={`/api/credentials/${credential.id}/export/png?locale=${locale}&variant=square`}
+          className="border border-line px-4 py-2 text-sm"
+        >
+          {t("downloadSquare")}
+        </a>
+      </div>
+    </section>
+  );
+}

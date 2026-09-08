@@ -1,0 +1,32 @@
+# syntax=docker/dockerfile:1
+
+FROM node:24-alpine AS deps
+RUN corepack enable
+WORKDIR /app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+
+FROM node:24-alpine AS build
+RUN corepack enable
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN pnpm build
+
+FROM node:24-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+# Bind hostname documented in ARCHITECTURE.md (next-intl rewrite safety)
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+RUN addgroup -S clinic && adduser -S clinic -G clinic
+COPY --from=build /app/public ./public
+COPY --from=build /app/.next/standalone ./
+COPY --from=build /app/.next/standalone/node_modules ./node_modules
+COPY --from=build /app/.next/static ./.next/static
+USER clinic
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -qO- http://127.0.0.1:3000/api/health || exit 1
+CMD ["node", "server.js"]

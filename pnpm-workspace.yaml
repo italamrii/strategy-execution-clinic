@@ -1,0 +1,7 @@
+allowBuilds:
+  '@embedded-postgres/windows-x64': true
+  esbuild: true
+  '@parcel/watcher': false
+  '@swc/core': false
+  sharp: false
+  unrs-resolver: false

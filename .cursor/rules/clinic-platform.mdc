@@ -1,0 +1,17 @@
+---
+description: Clinic engineering non-negotiables
+alwaysApply: true
+---
+
+# Strategy & Execution Clinic
+
+- Arabic is primary. All user-visible strings use next-intl. No hardcoded UI copy.
+- Use CSS logical properties. Do not assume left/right.
+- Light-first. Never introduce a dark-first shell. Use design tokens, never raw hex in components.
+- Authorization is server-side via permissions. UI hiding is not security.
+- Never trust client-supplied user id, role, hours, membership type as a grant, or credential status.
+- Volunteer hours are append-only. No self-approval. Corrections are adjustments.
+- Public verification uses an allowlisted DTO. No email, phone, or admin notes.
+- Modular monolith: import other domains only through `modules/*/index.ts`.
+- Do not implement payments, unrestricted AI, or microservices unless a later phase asks.
+- Do not claim PASS without lint, typecheck, tests, and build evidence.

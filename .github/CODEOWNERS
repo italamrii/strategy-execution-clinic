@@ -1,0 +1,10 @@
+# Strategy & Execution Clinic — CODEOWNERS
+
+# Phase 0: all changes reviewed by the platform owners.
+* @clinic-platform-owners
+
+/SECURITY.md @clinic-security
+/THREAT_MODEL.md @clinic-security
+/src/modules/identity/ @clinic-security
+/src/modules/audit/ @clinic-security
+/src/shared/security/ @clinic-security
