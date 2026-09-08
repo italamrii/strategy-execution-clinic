@@ -5,3 +5,4 @@ allowBuilds:
   '@swc/core': false
   sharp: false
   unrs-resolver: false
+  '@embedded-postgres/linux-x64': true
