@@ -101,7 +101,7 @@ test.describe("phase 6 operations e2e", () => {
     const strangerPage = await strangerContext.newPage();
     await login(strangerPage, "en", strangerEmail);
     await strangerPage.goto("/en/admin/settings");
-    await expect(strangerPage.getByText(/Forbidden|ممنوع/i)).toBeVisible();
+    await expect(strangerPage.locator('[data-access="denied"]')).toBeVisible();
 
     await page.goto("/ar");
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");

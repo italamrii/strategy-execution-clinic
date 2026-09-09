@@ -69,7 +69,7 @@ test.describe("professional tracks journeys", () => {
     const email = `e2e-track-leader-denied-${Date.now()}@clinic.test`;
     await login(page, "en", email);
     await page.goto("/en/account/tracks/strategy/manage");
-    await expect(page).toHaveURL(/\/en\/(account\/tracks|login|tracks)/);
+    await expect(page.locator('[data-access="denied"]')).toBeVisible();
   });
 
   test("admin tracks console is reachable for platform admins", async ({ page }) => {

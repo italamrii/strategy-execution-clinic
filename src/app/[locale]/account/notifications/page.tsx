@@ -1,13 +1,9 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireLocale } from "@/i18n/locale";
-import {
-  getOptionalAuthContext,
-  requireAuthenticatedPermission,
-  requireAuthenticatedUser,
-} from "@/modules/identity";
-import { AuthorizationError } from "@/shared/security/authorization";
+import { resolvePageAccess, requireAuthenticatedUser } from "@/modules/identity";
 import { getUnreadNotificationCount, listUserNotifications } from "@/modules/notifications";
 import { NotificationList } from "@/modules/notifications/ui/notification-list";
+import { AccessDenied } from "@/shared/ui/access-denied";
 
 export const dynamic = "force-dynamic";
 
@@ -19,19 +15,11 @@ export default async function NotificationsPage({
   const { locale: localeParam } = await params;
   const locale = requireLocale(localeParam);
   setRequestLocale(locale);
+  const access = await resolvePageAccess("notification.read.own");
+  if (access.status !== "ok") {
+    return <AccessDenied status={access.status} email={access.auth?.email ?? null} />;
+  }
   const t = await getTranslations("notifications");
-  const auth = await getOptionalAuthContext();
-  if (!auth) {
-    return <main className="mx-auto max-w-3xl px-6 py-24"><h1>{t("unauthorized")}</h1></main>;
-  }
-  try {
-    await requireAuthenticatedPermission("notification.read.own");
-  } catch (error) {
-    if (error instanceof AuthorizationError) {
-      return <main className="mx-auto max-w-3xl px-6 py-24"><h1>{t("forbidden")}</h1></main>;
-    }
-    throw error;
-  }
   const user = await requireAuthenticatedUser();
   const { items } = await listUserNotifications({ userId: user.userId });
   const unread = await getUnreadNotificationCount(user.userId);

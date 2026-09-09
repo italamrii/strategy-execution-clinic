@@ -14,6 +14,7 @@ export { requestLoginOtp, verifyLoginOtp, AuthError } from "./auth/service";
 export {
   syncClerkIdentityToLocalUser,
   planClerkUserMapping,
+  shouldAssignDefaultMemberRole,
   ClerkMappingError,
 } from "./auth/clerk-sync";
 export type { ClerkIdentity, LocalUserRecord, MappingPlan } from "./auth/clerk-sync";
@@ -39,9 +40,11 @@ export {
 export {
   requireAuthenticatedUser,
   requireAuthenticatedPermission,
+  requireAuthenticatedAnyPermission,
   getOptionalAuthContext,
+  resolvePageAccess,
 } from "./session/context";
-export type { AuthContext } from "./session/context";
+export type { AuthContext, PageAccess } from "./session/context";
 export {
   createSession,
   resolveSessionByToken,

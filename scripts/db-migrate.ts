@@ -26,6 +26,11 @@ async function main() {
   const db = drizzle(sql);
   await migrate(db, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
   await sql.end({ timeout: 5 });
+  const { closeDb, resetDb } = await import("../src/shared/db/client");
+  const { seedRbacCatalog } = await import("../src/modules/identity/rbac/service");
+  await resetDb(url);
+  await seedRbacCatalog();
+  await closeDb();
   console.log("Migrations applied successfully");
 }
 

@@ -71,6 +71,10 @@ export function planClerkUserMapping(input: {
   return { action: "create" };
 }
 
+export function shouldAssignDefaultMemberRole(existingAssignmentCount: number): boolean {
+  return existingAssignmentCount === 0;
+}
+
 async function ensureMemberRole(userId: string): Promise<void> {
   const db = getDb();
   const memberRole = await db.query.roles.findFirst({
@@ -92,6 +96,17 @@ async function ensureMemberRole(userId: string): Promise<void> {
     organizationId: null,
     grantedBy: null,
   });
+}
+
+async function ensureMemberRoleIfNeeded(userId: string): Promise<void> {
+  const db = getDb();
+  const assignments = await db.query.userRoles.findMany({
+    where: eq(userRoles.userId, userId),
+  });
+  if (!shouldAssignDefaultMemberRole(assignments.length)) {
+    return;
+  }
+  await ensureMemberRole(userId);
 }
 
 /**
@@ -304,10 +319,10 @@ export async function syncClerkIdentityToLocalUser(
       })
       .where(eq(users.id, plan.user.id));
     local = { ...plan.user, clerkUserId: identity.clerkUserId };
-    await ensureMemberRole(local.id);
+    await ensureMemberRoleIfNeeded(local.id);
   } else {
     local = plan.user;
-    await ensureMemberRole(local.id);
+    await ensureMemberRoleIfNeeded(local.id);
   }
 
   if (local.status !== "active") {

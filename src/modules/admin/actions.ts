@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAuthenticatedPermission } from "@/modules/identity";
+import { requireAuthenticatedAnyPermission, requireAuthenticatedPermission } from "@/modules/identity";
 import {
   createAnnouncement,
   updateFeatureFlag,
@@ -12,7 +12,7 @@ export async function updateSystemSettingAction(input: {
   value: unknown;
 }) {
   try {
-    const auth = await requireAuthenticatedPermission("settings.manage");
+    const auth = await requireAuthenticatedAnyPermission(["admin.settings.manage", "settings.manage"]);
     await updateSystemSetting({
       actorUserId: auth.userId,
       key: input.key,

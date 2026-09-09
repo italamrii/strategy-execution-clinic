@@ -1,9 +1,9 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireLocale } from "@/i18n/locale";
+import { AccessDenied } from "@/shared/ui/access-denied";
 import { getOptionalAuthContext, requireAuthenticatedPermission } from "@/modules/identity";
 import { AuthorizationError } from "@/shared/security/authorization";
 import { listAnnouncementsForAdmin } from "@/modules/admin";
-import { AdminNav } from "@/shared/ui/admin-nav";
 import { AnnouncementForm } from "@/modules/admin/ui/announcement-form";
 
 export const dynamic = "force-dynamic";
@@ -18,12 +18,12 @@ export default async function AdminAnnouncementsPage({
   setRequestLocale(locale);
   const t = await getTranslations("adminAnnouncements");
   const auth = await getOptionalAuthContext();
-  if (!auth) return <main className="mx-auto max-w-6xl px-6 py-24"><h1>{t("unauthorized")}</h1></main>;
+  if (!auth) return <AccessDenied status="unauthenticated" />;
   try {
     await requireAuthenticatedPermission("announcement.manage");
   } catch (error) {
     if (error instanceof AuthorizationError) {
-      return <main className="mx-auto max-w-6xl px-6 py-24"><h1>{t("forbidden")}</h1></main>;
+      return <AccessDenied status="forbidden" email={auth.email} />;
     }
     throw error;
   }
@@ -31,7 +31,7 @@ export default async function AdminAnnouncementsPage({
   return (
     <main id="main" className="mx-auto max-w-6xl px-6 py-16">
       <h1 className="text-4xl text-ink">{t("title")}</h1>
-      <AdminNav active="announcements" />
+      
       <AnnouncementForm />
       <ul className="mt-12 space-y-3">
         {items.map((row) => (

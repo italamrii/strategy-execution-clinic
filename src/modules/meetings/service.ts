@@ -16,7 +16,14 @@ function configuredJitsiOrigin() {
 }
 
 export function meetingEmbedUrl(roomKey: string) {
-  return `${configuredJitsiOrigin()}/${encodeURIComponent(roomKey)}#config.prejoinPageEnabled=true&config.disableDeepLinking=true`;
+  const params = new URLSearchParams({
+    "config.prejoinPageEnabled": "true",
+    "config.disableDeepLinking": "true",
+    "config.fileRecordingsEnabled": "false",
+    "config.liveStreamingEnabled": "false",
+    "config.hiddenDomain": "",
+  });
+  return `${configuredJitsiOrigin()}/${encodeURIComponent(roomKey)}#${params.toString()}`;
 }
 
 async function hasMeetingAccess(userId: string, meetingId: string) {
@@ -105,12 +112,78 @@ export async function getMeetingForUser(userId: string, meetingId: string) {
   const meeting = await db.query.meetingRooms.findFirst({ where: eq(meetingRooms.id, meetingId) });
   if (!meeting) throw new MeetingError("not_found");
   if (!(await hasMeetingAccess(userId, meeting.id))) throw new MeetingError("forbidden");
-  return { ...meeting, embedUrl: meetingEmbedUrl(meeting.roomKey) };
+  const participant = await db.query.meetingParticipants.findFirst({
+    where: and(eq(meetingParticipants.meetingId, meetingId), eq(meetingParticipants.userId, userId)),
+  });
+  const permissions = await getPermissionsForUser(userId);
+  const isHost = participant?.role === "host" || permissions.includes("meeting.manage");
+  const canStart =
+    meeting.status === "scheduled" &&
+    isHost &&
+    permissions.includes("meeting.start");
+  const canManageLifecycle = isHost && (permissions.includes("meeting.manage") || permissions.includes("meeting.start"));
+  return {
+    ...meeting,
+    embedUrl: meeting.status === "cancelled" || meeting.status === "completed" ? null : meetingEmbedUrl(meeting.roomKey),
+    participantRole: participant?.role ?? null,
+    canStart,
+    canComplete: meeting.status === "live" && canManageLifecycle,
+    canCancel: (meeting.status === "scheduled" || meeting.status === "live") && canManageLifecycle,
+  };
 }
 
 export async function markMeetingJoined(userId: string, meetingId: string) {
   const db = getDb();
+  const meeting = await db.query.meetingRooms.findFirst({ where: eq(meetingRooms.id, meetingId) });
+  if (!meeting) throw new MeetingError("not_found");
   if (!(await hasMeetingAccess(userId, meetingId))) throw new MeetingError("forbidden");
+  if (meeting.status === "cancelled" || meeting.status === "completed") {
+    throw new MeetingError("not_joinable");
+  }
   await db.update(meetingParticipants).set({ status: "joined", joinedAt: new Date(), updatedAt: new Date() })
     .where(and(eq(meetingParticipants.meetingId, meetingId), eq(meetingParticipants.userId, userId)));
 }
+
+const LIFECYCLE: Record<string, { from: readonly string[]; permission: "meeting.start" | "meeting.manage" }> = {
+  live: { from: ["scheduled"], permission: "meeting.start" },
+  completed: { from: ["live", "scheduled"], permission: "meeting.manage" },
+  cancelled: { from: ["scheduled", "live"], permission: "meeting.manage" },
+};
+
+export async function updateMeetingStatus(input: {
+  actorUserId: string;
+  meetingId: string;
+  status: "live" | "completed" | "cancelled";
+  requestId?: string | null;
+}) {
+  const db = getDb();
+  const meeting = await db.query.meetingRooms.findFirst({ where: eq(meetingRooms.id, input.meetingId) });
+  if (!meeting) throw new MeetingError("not_found");
+  const participant = await db.query.meetingParticipants.findFirst({
+    where: and(eq(meetingParticipants.meetingId, input.meetingId), eq(meetingParticipants.userId, input.actorUserId)),
+  });
+  const permissions = await getPermissionsForUser(input.actorUserId);
+  const isHost = participant?.role === "host" || permissions.includes("meeting.manage");
+  if (!isHost) throw new MeetingError("forbidden");
+  const rule = LIFECYCLE[input.status];
+  if (!rule || !rule.from.includes(meeting.status)) throw new MeetingError("invalid_status");
+  if (input.status === "live") {
+    await requirePermission(input.actorUserId, "meeting.start");
+  } else if (!permissions.includes("meeting.manage") && !permissions.includes("meeting.start")) {
+    throw new MeetingError("forbidden");
+  }
+  await db.update(meetingRooms).set({
+    status: input.status,
+    updatedAt: new Date(),
+  }).where(eq(meetingRooms.id, meeting.id));
+  await writeAudit({
+    actorUserId: input.actorUserId,
+    action: "MEETING_STATUS_CHANGED",
+    resourceType: "meeting",
+    resourceId: meeting.id,
+    requestId: input.requestId,
+    before: { status: meeting.status },
+    after: { status: input.status },
+  });
+}
+

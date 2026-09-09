@@ -1,6 +1,6 @@
 "use client";
 
-import { Link } from "@/i18n/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 
 const LINKS = [
@@ -10,6 +10,7 @@ const LINKS = [
   { key: "credentials", href: "/admin/credentials" },
   { key: "cardTemplates", href: "/admin/card-templates" },
   { key: "consultations", href: "/admin/consultations" },
+  { key: "meetings", href: "/admin/meetings" },
   { key: "volunteers", href: "/admin/volunteers" },
   { key: "contributions", href: "/admin/contributions" },
   { key: "recognition", href: "/admin/recognition" },
@@ -20,24 +21,36 @@ const LINKS = [
   { key: "settings", href: "/admin/settings" },
 ] as const;
 
-export function AdminNav({ active }: { active: (typeof LINKS)[number]["key"] }) {
+function isActive(pathname: string, href: string) {
+  if (href === "/admin") {
+    return pathname === "/admin";
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function AdminNav({
+  active,
+}: {
+  active?: (typeof LINKS)[number]["key"];
+}) {
   const t = useTranslations("adminNav");
+  const pathname = usePathname();
+
   return (
-    <nav aria-label={t("overview")} className="mt-6 flex flex-wrap gap-2 rounded-2xl border border-line bg-surface p-3 text-sm">
-      {LINKS.map((link) => (
-        <Link
-          key={link.key}
-          href={link.href}
-          aria-current={active === link.key ? "page" : undefined}
-          className={
-            active === link.key
-              ? "rounded-xl bg-navy px-4 py-3 text-white focus-visible:outline-2 focus-visible:outline-gold"
-              : "rounded-xl px-4 py-3 text-graphite transition-colors hover:bg-gold/10 hover:text-navy focus-visible:outline-2 focus-visible:outline-gold"
-          }
-        >
-          {t(link.key)}
-        </Link>
-      ))}
+    <nav aria-label={t("label")} className="admin-shell__nav">
+      {LINKS.map((link) => {
+        const current = active ? active === link.key : isActive(pathname, link.href);
+        return (
+          <Link
+            key={link.key}
+            href={link.href}
+            aria-current={current ? "page" : undefined}
+            className={current ? "is-active" : undefined}
+          >
+            {t(link.key)}
+          </Link>
+        );
+      })}
     </nav>
   );
 }

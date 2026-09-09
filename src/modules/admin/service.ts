@@ -9,9 +9,11 @@ import {
   auditLogs,
   badgeAwards,
   certificates,
+  consultationRequests,
   contributions,
   credentials,
   featureFlags,
+  meetingRooms,
   membershipApplications,
   memberships,
   profiles,
@@ -59,6 +61,8 @@ export async function getAdminDashboardMetrics() {
     failedNotifications,
     recentSecurityEvents,
     recentAuditActions,
+    pendingConsultations,
+    scheduledMeetings,
   ] = await Promise.all([
     db.select({ total: count() }).from(memberships).where(eq(memberships.status, "active")),
     db
@@ -90,6 +94,14 @@ export async function getAdminDashboardMetrics() {
     countFailedNotifications(),
     db.query.securityEvents.findMany({ orderBy: [desc(securityEvents.createdAt)], limit: 5 }),
     db.query.auditLogs.findMany({ orderBy: [desc(auditLogs.createdAt)], limit: 8 }),
+    db
+      .select({ total: count() })
+      .from(consultationRequests)
+      .where(eq(consultationRequests.status, "submitted")),
+    db
+      .select({ total: count() })
+      .from(meetingRooms)
+      .where(eq(meetingRooms.status, "scheduled")),
   ]);
 
   return {
@@ -112,6 +124,12 @@ export async function getAdminDashboardMetrics() {
       failedNotifications,
       recentSecurityEvents,
       recentAuditActions,
+    },
+    consultations: {
+      pending: Number(pendingConsultations[0]?.total ?? 0),
+    },
+    meetings: {
+      scheduled: Number(scheduledMeetings[0]?.total ?? 0),
     },
   };
 }

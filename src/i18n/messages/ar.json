@@ -22,7 +22,9 @@
     "join": "انضم إلى العيادة",
     "login": "تسجيل الدخول",
     "account": "الحساب",
-    "admin": "الإدارة"
+    "admin": "الإدارة",
+    "openMenu": "فتح القائمة",
+    "closeMenu": "إغلاق القائمة"
   },
   "home": {
     "eyebrow": "عيادة الاستراتيجية والتنفيذ",
@@ -650,12 +652,16 @@
     }
   },
   "adminNav": {
+    "label": "الإدارة",
+    "title": "العمليات",
+    "subtitle": "العضوية والاستشارات والاجتماعات وإدارة المنصة.",
     "overview": "نظرة عامة",
     "memberships": "الأعضاء",
     "tracks": "المسارات",
     "credentials": "الاعتمادات",
     "cardTemplates": "قوالب البطاقات",
     "consultations": "الاستشارات",
+    "meetings": "الاجتماعات",
     "volunteers": "التطوع",
     "contributions": "المساهمات",
     "recognition": "الاعتراف",
@@ -680,6 +686,11 @@
     "pendingHourApprovals": "ساعات بانتظار الاعتماد",
     "approvedContributions": "مساهمات معتمدة",
     "failedNotifications": "إشعارات فاشلة",
+    "pendingConsultations": "استشارات معلّقة",
+    "scheduledMeetings": "اجتماعات مجدولة",
+    "searchEmpty": "لا توجد سجلات تشغيلية مطابقة.",
+    "probeOk": "تم تأكيد صلاحية الإدارة",
+    "probeGranted": "الحساب الحالي يملك صلاحية لوحة الإدارة.",
     "searchLabel": "بحث تشغيلي",
     "searchPlaceholder": "اسم العضو، رمز الوثيقة، فرصة…",
     "search": "بحث",
@@ -744,7 +755,21 @@
     "allowVideo": "السماح بالفيديو",
     "create": "إنشاء الغرفة",
     "failed": "تعذر إنشاء الاجتماع.",
-    "deviceNote": "سيطلب المتصفح إذن الميكروفون والكاميرا عند دخول الغرفة."
+    "deviceNote": "سيطلب المتصفح إذن الميكروفون والكاميرا عند دخول الغرفة.",
+    "adminTitle": "إدارة الاجتماعات",
+    "openRoom": "فتح غرفة الاجتماع",
+    "roomUnavailable": "هذا الاجتماع غير متاح للانضمام.",
+    "start": "بدء الاجتماع",
+    "complete": "اعتماد الاكتمال",
+    "cancel": "إلغاء الاجتماع",
+    "cancelConfirm": "إلغاء هذا الاجتماع لجميع المشاركين؟",
+    "statusFailed": "تعذر تحديث حالة الاجتماع.",
+    "status": {
+      "scheduled": "مجدول",
+      "live": "مباشر",
+      "completed": "مكتمل",
+      "cancelled": "ملغي"
+    }
   },
   "cardTemplates": {
     "title": "قوالب بطاقات العضوية",
@@ -818,7 +843,8 @@
   "adminAudit": {
     "title": "سجل التدقيق",
     "unauthorized": "غير مصرّح",
-    "forbidden": "ممنوع"
+    "forbidden": "ممنوع",
+    "empty": "لا توجد أحداث تدقيق بعد."
   },
   "adminSecurity": {
     "title": "أحداث الأمان",
@@ -831,6 +857,28 @@
     "forbiddenTitle": "الوصول مرفوض",
     "forbiddenBody": "ليست لديك صلاحية لعرض هذه الصفحة.",
     "homeLink": "الرئيسية"
+  },
+  "access": {
+    "httpStatus": "رمز الحالة {status}",
+    "unauthorizedTitle": "يلزم تسجيل الدخول",
+    "unauthorizedBody": "هذه الصفحة متاحة فقط بعد تسجيل الدخول بحساب مصرّح في العيادة.",
+    "forbiddenTitle": "هذا الحساب لا يملك صلاحية الوصول",
+    "forbiddenBody": "أنت مسجّل الدخول، لكن هذا الحساب غير مسموح له بفتح هذه الصفحة. سجّل الخروج واستخدم الحساب الصحيح، أو عد إلى مساحة العضو.",
+    "signedInAs": "مسجّل الدخول باسم",
+    "signIn": "تسجيل الدخول",
+    "signOut": "تسجيل الخروج",
+    "backToAccount": "العودة إلى حسابي",
+    "retry": "إعادة المحاولة"
+  },
+  "states": {
+    "loadingEyebrow": "العيادة",
+    "loadingTitle": "جارٍ التحميل",
+    "loadingBody": "يرجى الانتظار ريثما تُجهَّز هذه الصفحة.",
+    "errorTitle": "حدث خطأ",
+    "errorBody": "تعذر تحميل الصفحة. حاول مرة أخرى أو عد إلى صفحة آمنة. لا تُعرض تفاصيل داخلية.",
+    "retry": "إعادة المحاولة",
+    "home": "الرئيسية",
+    "backToAccount": "العودة إلى حسابي"
   },
   "publicPages": {
     "aboutTitle": "عن العيادة",

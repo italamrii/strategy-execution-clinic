@@ -20,9 +20,11 @@ import { ROLE_PERMISSION_MAP, ROLE_SEEDS, PERMISSIONS } from "./catalog";
 
 export async function getPermissionsForUser(userId: string): Promise<string[]> {
   const db = getDb();
+  // Organization-scoped assignments never grant global permissions.
   const assignments = await db.query.userRoles.findMany({
     where: and(eq(userRoles.userId, userId), isNull(userRoles.organizationId)),
   });
+  // Member fallback applies only when the authenticated user has no global roles.
   if (assignments.length === 0) {
     return [...ROLE_PERMISSION_MAP.member];
   }
@@ -113,6 +115,11 @@ export async function requireRole(userId: string, roleSlug: RoleSlug): Promise<v
   await requireActiveUser(userId);
   const roleList = await getRolesForUser(userId);
   if (!roleList.includes(roleSlug)) {
+    await writeSecurityEvent({
+      kind: "permission_denied",
+      userId,
+      meta: { role: roleSlug },
+    });
     throw new AuthorizationError("forbidden");
   }
 }

@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireLocale } from "@/i18n/locale";
+import { AccessDenied } from "@/shared/ui/access-denied";
 import {
   getOptionalAuthContext,
   requireAuthenticatedPermission,
@@ -21,13 +22,13 @@ export default async function AdminBadgesPage({
   const t = await getTranslations("adminRecognition");
   const auth = await getOptionalAuthContext();
   if (!auth) {
-    return <main className="mx-auto max-w-6xl px-6 py-24"><h1>{t("unauthorized")}</h1></main>;
+    return <AccessDenied status="unauthenticated" />;
   }
   try {
     await requireAuthenticatedPermission("badge.definition.manage");
   } catch (error) {
     if (error instanceof AuthorizationError) {
-      return <main className="mx-auto max-w-6xl px-6 py-24"><h1>{t("forbidden")}</h1></main>;
+      return <AccessDenied status="forbidden" email={auth.email} />;
     }
     throw error;
   }

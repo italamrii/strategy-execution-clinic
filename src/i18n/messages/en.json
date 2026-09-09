@@ -22,7 +22,9 @@
     "join": "Join the Clinic",
     "login": "Sign in",
     "account": "Account",
-    "admin": "Admin"
+    "admin": "Admin",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "home": {
     "eyebrow": "Strategy & Execution Clinic",
@@ -650,12 +652,16 @@
     }
   },
   "adminNav": {
+    "label": "Administration",
+    "title": "Operations",
+    "subtitle": "Membership, consultations, meetings, and platform controls.",
     "overview": "Overview",
     "memberships": "Members",
     "tracks": "Tracks",
     "credentials": "Credentials",
     "cardTemplates": "Card templates",
     "consultations": "Consultations",
+    "meetings": "Meetings",
     "volunteers": "Volunteers",
     "contributions": "Contributions",
     "recognition": "Recognition",
@@ -680,6 +686,11 @@
     "pendingHourApprovals": "Pending hour approvals",
     "approvedContributions": "Approved contributions",
     "failedNotifications": "Failed notifications",
+    "pendingConsultations": "Pending consultations",
+    "scheduledMeetings": "Scheduled meetings",
+    "searchEmpty": "No matching operational records.",
+    "probeOk": "Admin access confirmed",
+    "probeGranted": "The signed-in account has dashboard permission.",
     "searchLabel": "Operational search",
     "searchPlaceholder": "Member name, credential code, opportunity…",
     "search": "Search",
@@ -744,7 +755,21 @@
     "allowVideo": "Allow video",
     "create": "Create room",
     "failed": "Could not create the meeting.",
-    "deviceNote": "Your browser will ask for microphone and camera access when you enter."
+    "deviceNote": "Your browser will ask for microphone and camera access when you enter.",
+    "adminTitle": "Meeting management",
+    "openRoom": "Open meeting room",
+    "roomUnavailable": "This meeting is not available to join.",
+    "start": "Start meeting",
+    "complete": "Mark completed",
+    "cancel": "Cancel meeting",
+    "cancelConfirm": "Cancel this meeting for all participants?",
+    "statusFailed": "Could not update the meeting status.",
+    "status": {
+      "scheduled": "Scheduled",
+      "live": "Live",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    }
   },
   "cardTemplates": {
     "title": "Membership card templates",
@@ -818,7 +843,8 @@
   "adminAudit": {
     "title": "Audit log",
     "unauthorized": "Unauthorized",
-    "forbidden": "Forbidden"
+    "forbidden": "Forbidden",
+    "empty": "No audit events yet."
   },
   "adminSecurity": {
     "title": "Security events",
@@ -831,6 +857,28 @@
     "forbiddenTitle": "Access denied",
     "forbiddenBody": "You do not have permission to view this page.",
     "homeLink": "Home"
+  },
+  "access": {
+    "httpStatus": "HTTP status {status}",
+    "unauthorizedTitle": "Sign in required",
+    "unauthorizedBody": "This page is available only after you sign in with an authorized Clinic account.",
+    "forbiddenTitle": "This account does not have access",
+    "forbiddenBody": "You are signed in, but this account is not allowed to open this page. Sign out and use the correct account, or return to your member area.",
+    "signedInAs": "Signed in as",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "backToAccount": "Back to my account",
+    "retry": "Try again"
+  },
+  "states": {
+    "loadingEyebrow": "Clinic",
+    "loadingTitle": "Loading",
+    "loadingBody": "Please wait while this page is prepared.",
+    "errorTitle": "Something went wrong",
+    "errorBody": "The page could not be loaded. Try again, or return to a safe page. No internal details are shown.",
+    "retry": "Try again",
+    "home": "Home",
+    "backToAccount": "Back to my account"
   },
   "publicPages": {
     "aboutTitle": "About the Clinic",
