@@ -37,7 +37,7 @@ COPY --from=build /app/public ./public
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/scripts ./scripts
+COPY --from=build /app/scripts ./scripts`r`nCOPY --from=build /app/src ./src
 COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/.next/static ./.next/static
 USER clinic
