@@ -125,8 +125,16 @@ export async function completeClerkLoginAction(input: {
   }
   const meta = await requestMeta();
   try {
-    const session = await auth();
-    if (!session.userId || !session.sessionId) {
+    let userId: string | null = null;
+    let sessionId: string | null = null;
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const session = await auth();
+      userId = session.userId;
+      sessionId = session.sessionId;
+      if (userId && sessionId) break;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+    if (!userId || !sessionId) {
       return { ok: false, code: "invalid_otp" };
     }
     const clerkUser = await currentUser();
@@ -137,7 +145,7 @@ export async function completeClerkLoginAction(input: {
       await writeAudit({
         action: "AUTH_MAPPING_FAILED",
         resourceType: "clerk_user",
-        resourceId: session.userId,
+        resourceId: userId,
         requestId: meta.requestId,
         reason: "missing_email",
       });
@@ -146,7 +154,7 @@ export async function completeClerkLoginAction(input: {
 
     await syncClerkIdentityToLocalUser(
       {
-        clerkUserId: session.userId,
+        clerkUserId: userId,
         email,
         locale: input.locale,
       },

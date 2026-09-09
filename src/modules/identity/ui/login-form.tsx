@@ -1,20 +1,23 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
-import { useSignIn, useSignUp } from "@clerk/nextjs";
+import { useAuth, useSignIn, useSignUp } from "@clerk/nextjs";
 import { isClerkAPIResponseError } from "@clerk/nextjs/errors";
-import { useRouter } from "@/i18n/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
+import { completeClerkLoginAction } from "@/modules/identity/actions";
 import { Button } from "@/shared/ui/button";
-import { TextField } from "@/shared/ui/text-field";
 import { OTPInput } from "@/shared/ui/otp-input";
 import { StatusAlert } from "@/shared/ui/status-alert";
-import { completeClerkLoginAction } from "@/modules/identity/actions";
+import { TextField } from "@/shared/ui/text-field";
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
 export function LoginForm() {
   const t = useTranslations("auth");
   const locale = useLocale() as "ar" | "en";
-  const router = useRouter();
+  const { getToken } = useAuth();
   const { signIn, fetchStatus: signInFetchStatus } = useSignIn();
   const { signUp, fetchStatus: signUpFetchStatus } = useSignUp();
   const [email, setEmail] = useState("");
@@ -46,22 +49,80 @@ export function LoginForm() {
       const value = String((err as { code: string }).code);
       if (value === "account_restricted") return t("errors.restricted");
       if (value === "rate_limited") return t("errors.rateLimited");
+      if (value === "invalid_otp") return t("errors.invalidOtp");
     }
     return t("errors.generic");
   };
 
+  const goToAccount = () => {
+    window.location.assign(`/${locale}/account`);
+  };
+
+  /**
+   * Wait for Clerk session cookies, sync to local Postgres, then hard-navigate.
+   * Soft client navigations can race middleware before `__session` is visible.
+   */
   const finalizeAndEnter = async () => {
-    const result = await completeClerkLoginAction({ locale });
-    if (!result.ok) {
-      setError(mapClerkError({ code: result.code }));
-      setStep("code");
-      return;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const token = await getToken().catch(() => null);
+      if (!token) {
+        await sleep(200);
+        continue;
+      }
+      const result = await completeClerkLoginAction({ locale });
+      if (result.ok) {
+        setStep("success");
+        await sleep(400);
+        goToAccount();
+        return;
+      }
+      if (result.code === "account_restricted") {
+        setError(t("errors.restricted"));
+        setStep("code");
+        return;
+      }
+      await sleep(250);
     }
-    setStep("success");
-    window.setTimeout(() => {
-      router.replace("/account");
-      router.refresh();
-    }, 650);
+    // Session may still be valid client-side; account load re-syncs via auth().
+    goToAccount();
+  };
+
+  const completeActiveSignIn = async () => {
+    if (!signIn) throw new Error("sign_in_unavailable");
+    if (signIn.status !== "complete") {
+      throw new Error(`sign_in_incomplete:${signIn.status ?? "unknown"}`);
+    }
+    await signIn.finalize({
+      navigate: async ({ session }) => {
+        if (session?.currentTask) {
+          throw new Error(`session_task:${String(session.currentTask)}`);
+        }
+      },
+    });
+    await finalizeAndEnter();
+  };
+
+  const completeActiveSignUp = async () => {
+    if (!signUp) throw new Error("sign_up_unavailable");
+    if (signUp.status === "missing_requirements") {
+      const localPart = email.trim().split("@")[0] || "member";
+      const { error: updateError } = await signUp.update({
+        firstName: localPart.slice(0, 40),
+        lastName: "Clinic",
+      });
+      if (updateError) throw updateError;
+    }
+    if (signUp.status !== "complete") {
+      throw new Error(`sign_up_incomplete:${signUp.status ?? "unknown"}`);
+    }
+    await signUp.finalize({
+      navigate: async ({ session }) => {
+        if (session?.currentTask) {
+          throw new Error(`session_task:${String(session.currentTask)}`);
+        }
+      },
+    });
+    await finalizeAndEnter();
   };
 
   const sendCode = async () => {
@@ -86,29 +147,22 @@ export function LoginForm() {
       ) {
         const { error: transferError } = await signUp.create({ transfer: true });
         if (transferError) throw transferError;
-        if (signUp.status === "complete") {
-          await signUp.finalize({
-            navigate: async () => {
-              await finalizeAndEnter();
-            },
-          });
-          return;
-        }
-        throw new Error("sign_up_incomplete");
+        await completeActiveSignUp();
+        return;
       }
       throw error;
     }
 
     if (signIn.status === "complete") {
-      await signIn.finalize({
-        navigate: async () => {
-          await finalizeAndEnter();
-        },
-      });
+      await completeActiveSignIn();
       return;
     }
 
-    throw new Error("sign_in_incomplete");
+    if (signIn.status === "needs_client_trust") {
+      throw new Error("needs_client_trust");
+    }
+
+    throw new Error(`sign_in_incomplete:${signIn.status ?? "unknown"}`);
   };
 
   return (
