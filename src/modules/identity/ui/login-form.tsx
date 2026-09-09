@@ -58,21 +58,17 @@ export function LoginForm() {
     window.location.assign(`/${locale}/account`);
   };
 
-  /**
-   * Wait for Clerk session cookies, sync to local Postgres, then hard-navigate.
-   * Soft client navigations can race middleware before `__session` is visible.
-   */
   const finalizeAndEnter = async () => {
     for (let attempt = 0; attempt < 10; attempt++) {
       const token = await getToken().catch(() => null);
       if (!token) {
-        await sleep(200);
+        await sleep(250);
         continue;
       }
       const result = await completeClerkLoginAction({ locale });
       if (result.ok) {
         setStep("success");
-        await sleep(400);
+        await sleep(350);
         goToAccount();
         return;
       }
@@ -83,45 +79,95 @@ export function LoginForm() {
       }
       await sleep(250);
     }
-    // Session may still be valid client-side; account load re-syncs via auth().
     goToAccount();
+  };
+
+  const fillMissingSignUpFields = async () => {
+    if (!signUp) return;
+    const localPart = email.trim().split("@")[0] || "member";
+    const missing = new Set(
+      [...(signUp.missingFields ?? []), ...(signUp.optionalFields ?? [])].map(String),
+    );
+    const payload: {
+      firstName?: string;
+      lastName?: string;
+      legalAccepted?: boolean;
+    } = {};
+
+    if (
+      missing.size === 0 ||
+      missing.has("first_name") ||
+      missing.has("firstName")
+    ) {
+      payload.firstName = localPart.slice(0, 40);
+    }
+    if (
+      missing.size === 0 ||
+      missing.has("last_name") ||
+      missing.has("lastName")
+    ) {
+      payload.lastName = "Clinic";
+    }
+    if (missing.has("legal_accepted") || missing.has("legalAccepted")) {
+      payload.legalAccepted = true;
+    }
+
+    const { error } = await signUp.update(payload);
+    if (error) throw error;
   };
 
   const completeActiveSignIn = async () => {
     if (!signIn) throw new Error("sign_in_unavailable");
     if (signIn.status !== "complete") {
-      throw new Error(`sign_in_incomplete:${signIn.status ?? "unknown"}`);
+      throw Object.assign(new Error("sign_in_incomplete"), {
+        code: "invalid_otp",
+        status: signIn.status,
+      });
     }
-    await signIn.finalize({
+    const { error } = await signIn.finalize({
       navigate: async ({ session }) => {
         if (session?.currentTask) {
-          throw new Error(`session_task:${String(session.currentTask)}`);
+          throw Object.assign(new Error("session_task"), {
+            code: "invalid_otp",
+          });
         }
       },
     });
+    if (error) throw error;
     await finalizeAndEnter();
   };
 
   const completeActiveSignUp = async () => {
     if (!signUp) throw new Error("sign_up_unavailable");
-    if (signUp.status === "missing_requirements") {
-      const localPart = email.trim().split("@")[0] || "member";
-      const { error: updateError } = await signUp.update({
-        firstName: localPart.slice(0, 40),
-        lastName: "Clinic",
-      });
-      if (updateError) throw updateError;
+
+    for (let attempt = 0; attempt < 4; attempt++) {
+      if (signUp.status === "complete") break;
+      if (signUp.status === "missing_requirements") {
+        await fillMissingSignUpFields();
+        continue;
+      }
+      break;
     }
+
     if (signUp.status !== "complete") {
-      throw new Error(`sign_up_incomplete:${signUp.status ?? "unknown"}`);
+      throw Object.assign(new Error("sign_up_incomplete"), {
+        code: "invalid_otp",
+        status: signUp.status,
+        missingFields: signUp.missingFields,
+        unverifiedFields: signUp.unverifiedFields,
+      });
     }
-    await signUp.finalize({
+
+    const { error } = await signUp.finalize({
       navigate: async ({ session }) => {
         if (session?.currentTask) {
-          throw new Error(`session_task:${String(session.currentTask)}`);
+          throw Object.assign(new Error("session_task"), {
+            code: "invalid_otp",
+          });
         }
       },
     });
+    if (error) throw error;
     await finalizeAndEnter();
   };
 
@@ -158,11 +204,17 @@ export function LoginForm() {
       return;
     }
 
-    if (signIn.status === "needs_client_trust") {
-      throw new Error("needs_client_trust");
+    // Some instances transfer into sign-up after a successful verify without the
+    // dedicated transfer error code.
+    if (signUp.status === "complete" || signUp.status === "missing_requirements") {
+      await completeActiveSignUp();
+      return;
     }
 
-    throw new Error(`sign_in_incomplete:${signIn.status ?? "unknown"}`);
+    throw Object.assign(new Error("sign_in_incomplete"), {
+      code: "invalid_otp",
+      status: signIn.status,
+    });
   };
 
   return (
@@ -205,7 +257,6 @@ export function LoginForm() {
             {busy ? t("sending") : t("sendCode")}
             <span aria-hidden>←</span>
           </Button>
-          {/* Required for Clerk bot protection on sign-up paths */}
           <div id="clerk-captcha" />
         </form>
       ) : step === "code" ? (

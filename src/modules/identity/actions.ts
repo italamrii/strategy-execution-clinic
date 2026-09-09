@@ -163,9 +163,19 @@ export async function completeClerkLoginAction(input: {
     return { ok: true };
   } catch (error) {
     if (error instanceof ClerkMappingError) {
-      return { ok: false, code: error.code === "account_restricted" ? "account_restricted" : "invalid_otp" };
+      return {
+        ok: false,
+        code: error.code === "account_restricted" ? "account_restricted" : "invalid_otp",
+      };
     }
-    throw error;
+    await writeAudit({
+      action: "AUTH_MAPPING_FAILED",
+      resourceType: "clerk_user",
+      resourceId: "unknown",
+      requestId: meta.requestId,
+      reason: "unexpected_complete_login_error",
+    });
+    return { ok: false, code: "invalid_otp" };
   }
 }
 
