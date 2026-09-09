@@ -19,9 +19,8 @@ ARG NEXT_PUBLIC_CLERK_SIGN_IN_URL=/ar/login
 ENV NEXT_PUBLIC_CLERK_SIGN_IN_URL=$NEXT_PUBLIC_CLERK_SIGN_IN_URL
 ARG NEXT_PUBLIC_CLERK_SIGN_UP_URL=/ar/login
 ENV NEXT_PUBLIC_CLERK_SIGN_UP_URL=$NEXT_PUBLIC_CLERK_SIGN_UP_URL
-# Ensure server components that resolve AUTH_PROVIDER during the production build
-# treat the image as Clerk-backed (secret key is injected at runtime on Railway).
-ENV AUTH_PROVIDER=clerk
+# Do not set AUTH_PROVIDER=clerk during `pnpm build`: the secret key is only
+# available at runtime, and Clerk auth() during static collection would fail.
 RUN pnpm build
 
 FROM node:24-alpine AS runner
