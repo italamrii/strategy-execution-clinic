@@ -55,6 +55,9 @@ export function LoginForm() {
   };
 
   const goToAccount = () => {
+    // Full document navigation so Clerk session cookies are visible to middleware
+    // on the first account request (client transitions can race cookie settle).
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- intentional hard navigation after Clerk finalize
     window.location.assign(`/${locale}/account`);
   };
 
