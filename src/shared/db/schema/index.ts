@@ -120,6 +120,8 @@ export const profileContacts = pgTable("profile_contacts", {
   phoneE164: text("phone_e164"),
   phoneVerifiedAt: timestamp("phone_verified_at", { withTimezone: true }),
   adminNotes: text("admin_notes"),
+  sharingEnabled: boolean("sharing_enabled").notNull().default(false),
+  sharingScope: text("sharing_scope").notNull().default("private"),
   ...timestamps,
 }, (t) => [uniqueIndex("profile_contacts_user_id_unique").on(t.userId)]);
 
@@ -1001,3 +1003,84 @@ export const trackEvents = pgTable("track_events", {
   createdBy: uuid("created_by").references(() => users.id),
   ...timestamps,
 }, (t) => [index("track_events_track_starts_idx").on(t.trackId, t.startsAt)]);
+
+/** Versioned visual templates. A new active row can replace the design without reissuing credentials. */
+export const membershipCardTemplates = pgTable("membership_card_templates", {
+  id: uuid("id").primaryKey(),
+  membershipTypeId: uuid("membership_type_id").references(() => membershipTypes.id),
+  slug: text("slug").notNull(),
+  nameAr: text("name_ar").notNull(),
+  nameEn: text("name_en").notNull(),
+  version: integer("version").notNull().default(1),
+  status: text("status").notNull().default("draft"),
+  config: jsonb("config").notNull(),
+  createdBy: uuid("created_by").references(() => users.id),
+  updatedBy: uuid("updated_by").references(() => users.id),
+  ...timestamps,
+}, (t) => [
+  uniqueIndex("membership_card_templates_slug_version_unique").on(t.slug, t.version),
+  index("membership_card_templates_type_status_idx").on(t.membershipTypeId, t.status),
+]);
+
+export const consultationRequests = pgTable("consultation_requests", {
+  id: uuid("id").primaryKey(),
+  requesterUserId: uuid("requester_user_id").notNull().references(() => users.id),
+  trackId: uuid("track_id").references(() => tracks.id),
+  assignedExpertUserId: uuid("assigned_expert_user_id").references(() => users.id),
+  subject: text("subject").notNull(),
+  description: text("description").notNull(),
+  desiredOutcome: text("desired_outcome"),
+  urgency: text("urgency").notNull().default("normal"),
+  status: text("status").notNull().default("submitted"),
+  submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  closedAt: timestamp("closed_at", { withTimezone: true }),
+  ...timestamps,
+}, (t) => [
+  index("consultation_requests_requester_status_idx").on(t.requesterUserId, t.status),
+  index("consultation_requests_expert_status_idx").on(t.assignedExpertUserId, t.status),
+  index("consultation_requests_track_status_idx").on(t.trackId, t.status),
+]);
+
+export const consultationMessages = pgTable("consultation_messages", {
+  id: uuid("id").primaryKey(),
+  requestId: uuid("request_id").notNull().references(() => consultationRequests.id),
+  authorUserId: uuid("author_user_id").notNull().references(() => users.id),
+  body: text("body").notNull(),
+  kind: text("kind").notNull().default("message"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("consultation_messages_request_created_idx").on(t.requestId, t.createdAt)]);
+
+export const meetingRooms = pgTable("meeting_rooms", {
+  id: uuid("id").primaryKey(),
+  consultationId: uuid("consultation_id").references(() => consultationRequests.id),
+  trackId: uuid("track_id").references(() => tracks.id),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  provider: text("provider").notNull().default("jitsi"),
+  roomKey: text("room_key").notNull(),
+  status: text("status").notNull().default("scheduled"),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  allowAudio: boolean("allow_audio").notNull().default(true),
+  allowVideo: boolean("allow_video").notNull().default(true),
+  ...timestamps,
+}, (t) => [
+  uniqueIndex("meeting_rooms_room_key_unique").on(t.roomKey),
+  index("meeting_rooms_consultation_idx").on(t.consultationId),
+  index("meeting_rooms_starts_idx").on(t.startsAt),
+]);
+
+export const meetingParticipants = pgTable("meeting_participants", {
+  id: uuid("id").primaryKey(),
+  meetingId: uuid("meeting_id").notNull().references(() => meetingRooms.id),
+  userId: uuid("user_id").notNull().references(() => users.id),
+  role: text("role").notNull().default("attendee"),
+  status: text("status").notNull().default("invited"),
+  joinedAt: timestamp("joined_at", { withTimezone: true }),
+  ...timestamps,
+}, (t) => [
+  uniqueIndex("meeting_participants_meeting_user_unique").on(t.meetingId, t.userId),
+  index("meeting_participants_user_status_idx").on(t.userId, t.status),
+]);

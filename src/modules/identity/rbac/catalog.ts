@@ -120,6 +120,17 @@ export const PERMISSIONS = [
   "track.event.manage",
   "track.analytics.read",
   "track.announcement.manage",
+  "consultation.create",
+  "consultation.read.own",
+  "consultation.read.assigned",
+  "consultation.read.any",
+  "consultation.assign",
+  "consultation.respond",
+  "consultation.manage",
+  "meeting.read.own",
+  "meeting.create",
+  "meeting.manage",
+  "credential.template.manage",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -305,6 +316,16 @@ const OPS_ADMIN_PERMS = [
   "report.read",
 ] as const satisfies readonly Permission[];
 
+const CONSULTATION_ADMIN_PERMS = [
+  "consultation.read.any",
+  "consultation.assign",
+  "consultation.respond",
+  "consultation.manage",
+  "meeting.read.own",
+  "meeting.create",
+  "meeting.manage",
+] as const satisfies readonly Permission[];
+
 export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
   super_admin: ALL,
   platform_admin: [
@@ -323,6 +344,8 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     ...VOLUNTEER_ADMIN_PERMS,
     ...RECOGNITION_ADMIN_PERMS,
     ...TRACK_ADMIN_PERMS,
+    ...CONSULTATION_ADMIN_PERMS,
+    "credential.template.manage",
     ...OPS_ADMIN_PERMS,
   ],
   membership_admin: [
@@ -332,6 +355,7 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     "credential.issue",
     "credential.suspend",
     "credential.revoke",
+    "credential.template.manage",
     "credential.asset.generate",
     "credential.audit.read",
     "credential.render",
@@ -342,6 +366,10 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     "membership.type.read",
     "membership.track.read",
     ...TRACK_LEADER_PERMS,
+    "consultation.read.assigned",
+    "consultation.respond",
+    "meeting.read.own",
+    "meeting.create",
   ],
   volunteer_leader: VOLUNTEER_LEADER_PERMS,
   reviewer: [
@@ -359,6 +387,9 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     "contribution.reject",
     "track.contribution.read.scoped",
     "track.contribution.review",
+    "consultation.read.assigned",
+    "consultation.respond",
+    "meeting.read.own",
   ],
   content_manager: ["content.write", "content.read", "announcement.manage"],
   partner_manager: ["partner.write"],
@@ -389,5 +420,8 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     ...MEMBER_VOLUNTEER_PERMS,
     ...MEMBER_RECOGNITION_PERMS,
     ...MEMBER_TRACK_PERMS,
+    "consultation.create",
+    "consultation.read.own",
+    "meeting.read.own",
   ],
 };

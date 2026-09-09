@@ -10,6 +10,7 @@
 | Object storage | S3-compatible (R2, S3, MinIO) |
 | Email (auth OTP) | Clerk (when `AUTH_PROVIDER=clerk`) |
 | Email (notifications) | Optional SMTP transactional provider |
+| Audio/video meetings | Jitsi-compatible HTTPS deployment embedded behind platform authorization |
 
 No Kubernetes. No microservices.
 
@@ -72,3 +73,15 @@ Copy `public/` and `.next/static/` into standalone per Next.js docs when using s
 4. Roll back worker to matching app version.
 
 Document each release migration compatibility in `docs/operations/RELEASE.md`.
+
+## Audio/video meetings
+
+Set `JITSI_DOMAIN` to a hostname such as `meet.jit.si` or to the HTTPS origin of a
+managed/self-hosted Jitsi deployment. The app derives its CSP, camera, microphone,
+WebSocket, and iframe allowlists from this single value.
+
+Meeting pages and records are protected by platform permissions, and room names are
+generated with cryptographically random identifiers. The public `meet.jit.si` default
+is suitable for initial operation but does not make the conferencing provider private.
+For confidential advisory sessions, use a managed or self-hosted Jitsi deployment with
+provider-side authentication and the applicable retention policy.

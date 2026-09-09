@@ -1,0 +1,18 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
+import { saveCardTemplateAction } from "../template-actions";
+import type { CardDesign } from "../card-svg";
+
+export function CardTemplateForm({ template }: { template?: { id: string; slug: string; nameAr: string; nameEn: string; status: string; config: CardDesign } }) {
+  const t = useTranslations("cardTemplates"); const [pending, startTransition] = useTransition(); const [notice, setNotice] = useState<string | null>(null);
+  const design = template?.config ?? {};
+  return <form className="mt-8 grid gap-4 rounded-2xl border border-sand p-6" onSubmit={(event) => { event.preventDefault(); const data = new FormData(event.currentTarget); startTransition(async () => { const result = await saveCardTemplateAction({ templateId: template?.id, slug: String(data.get("slug")), nameAr: String(data.get("nameAr")), nameEn: String(data.get("nameEn")), status: String(data.get("status")) as "draft" | "active" | "archived", background: String(data.get("background")), surface: String(data.get("surface")), accent: String(data.get("accent")), text: String(data.get("text")), muted: String(data.get("muted")), frontTaglineAr: String(data.get("frontTaglineAr")), frontTaglineEn: String(data.get("frontTaglineEn")), showSeal: data.get("showSeal") === "on", showMemberSince: data.get("showMemberSince") === "on", showBenefits: data.get("showBenefits") === "on" }); setNotice(result.ok ? t("saved") : t("failed")); if (result.ok) window.location.reload(); }); }}>
+    <div className="grid gap-4 md:grid-cols-2"><label>{t("nameAr")}<input name="nameAr" defaultValue={template?.nameAr ?? "البطاقة الكحلية الذهبية"} required className="mt-2 w-full border border-sand p-3" /></label><label>{t("nameEn")}<input name="nameEn" defaultValue={template?.nameEn ?? "Clinic Navy & Gold"} required className="mt-2 w-full border border-sand p-3" /></label><label>{t("slug")}<input name="slug" defaultValue={template?.slug ?? "clinic-navy-gold"} readOnly={Boolean(template)} className="mt-2 w-full border border-sand p-3" /></label><label>{t("statusLabel")}<select name="status" defaultValue={template?.status ?? "active"} className="mt-2 w-full border border-sand bg-white p-3"><option value="draft">{t("draft")}</option><option value="active">{t("active")}</option><option value="archived">{t("archived")}</option></select></label></div>
+    <div className="grid gap-4 md:grid-cols-5">{(["background", "surface", "accent", "text", "muted"] as const).map((key) => <label key={key}>{t(key)}<input name={key} type="color" defaultValue={design[key] ?? ({ background: "#071526", surface: "#0B1D33", accent: "#C9A45F", text: "#F7F3EA", muted: "#C6B994" }[key])} className="mt-2 h-12 w-full" /></label>)}</div>
+    <label>{t("taglineAr")}<input name="frontTaglineAr" defaultValue={design.frontTaglineAr ?? "من التشخيص... إلى التنفيذ... إلى الأثر"} className="mt-2 w-full border border-sand p-3" /></label><label>{t("taglineEn")}<input name="frontTaglineEn" defaultValue={design.frontTaglineEn ?? "From diagnosis to execution to impact"} className="mt-2 w-full border border-sand p-3" /></label>
+    <div className="flex flex-wrap gap-5"><label><input name="showSeal" type="checkbox" defaultChecked={design.showSeal ?? true} /> {t("showSeal")}</label><label><input name="showMemberSince" type="checkbox" defaultChecked={design.showMemberSince ?? true} /> {t("showMemberSince")}</label><label><input name="showBenefits" type="checkbox" defaultChecked={design.showBenefits ?? true} /> {t("showBenefits")}</label></div>
+    {notice ? <p>{notice}</p> : null}<button disabled={pending} className="bg-navy px-5 py-3 text-white">{t("save")}</button>
+  </form>;
+}

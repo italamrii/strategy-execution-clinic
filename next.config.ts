@@ -15,6 +15,15 @@ const clerkConnect =
   "https://*.clerk.accounts.dev https://*.clerk.com https://clerk-telemetry.com https://*.clerk-telemetry.com https://*.protect.clerk.com:*";
 const clerkImg = "https://img.clerk.com";
 const clerkFrame = "https://challenges.cloudflare.com https://*.protect.clerk.com";
+const meetingOrigin = (() => {
+  const raw = process.env.JITSI_DOMAIN?.trim() || "meet.jit.si";
+  try {
+    const url = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
+    return url.protocol === "https:" ? url.origin : "https://meet.jit.si";
+  } catch {
+    return "https://meet.jit.si";
+  }
+})();
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -22,7 +31,7 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), payment=()",
+    value: `camera=(self "${meetingOrigin}"), microphone=(self "${meetingOrigin}"), geolocation=(), payment=()`,
   },
   { key: "X-DNS-Prefetch-Control", value: "off" },
   {
@@ -33,9 +42,9 @@ const securityHeaders = [
       "font-src 'self'",
       "style-src 'self' 'unsafe-inline'",
       scriptSrc,
-      `connect-src 'self' ${clerkConnect}`,
+      `connect-src 'self' ${clerkConnect} ${meetingOrigin} wss://${new URL(meetingOrigin).host}`,
       "worker-src 'self' blob:",
-      `frame-src 'self' ${clerkFrame}`,
+      `frame-src 'self' ${clerkFrame} ${meetingOrigin}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

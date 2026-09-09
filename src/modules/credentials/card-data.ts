@@ -3,6 +3,7 @@ import type { CardRenderInput } from "./card-svg";
 import { buildVerificationUrl, generateQrSvg } from "./qr";
 import { effectiveCredentialStatus, type CredentialDbStatus } from "./states";
 import { hydrateCredentialContext } from "./service";
+import { getActiveCardTemplate } from "./templates";
 
 export async function buildCardRenderInput(
   credentialId: string,
@@ -14,6 +15,7 @@ export async function buildCardRenderInput(
   const qrSvg = await generateQrSvg(verificationUrl);
   const { getVerifiedTrackIdentity } = await import("@/modules/tracks");
   const identity = await getVerifiedTrackIdentity(ctx.membership.userId);
+  const template = await getActiveCardTemplate(ctx.membership.membershipTypeId);
   const primary = identity.primaryTrack ?? ctx.trackRows[0] ?? null;
   return {
     locale,
@@ -28,10 +30,12 @@ export async function buildCardRenderInput(
     publicCode: ctx.credential.publicCode,
     statusLabel,
     issuedYear: ctx.credential.issuedAt.getFullYear(),
+    issuedAtLabel: new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : "en-GB", { dateStyle: "medium" }).format(ctx.credential.issuedAt),
     typeSlug: ctx.type?.slug ?? "professional_member",
     qrSvg,
     showPhoto: ctx.profile?.visibility === "public",
     photoDataUrl: null,
+    design: template?.config ?? null,
   };
 }
 

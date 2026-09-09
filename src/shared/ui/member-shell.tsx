@@ -4,6 +4,7 @@ export function MemberShell({ children, labels }: { children: React.ReactNode; l
   const links = [
     ["/account", "overview"], ["/account/profile", "profile"], ["/account/membership", "membership"],
     ["/account/credential", "credential"], ["/account/volunteer", "volunteer"], ["/account/contributions", "contributions"],
+    ["/account/consultations", "consultations"], ["/account/meetings", "meetings"],
     ["/account/notifications", "notifications"], ["/account/security", "security"],
   ] as const;
   return (

@@ -11,10 +11,25 @@ export type CardRenderInput = {
   publicCode: string;
   statusLabel: string;
   issuedYear: number;
+  issuedAtLabel?: string;
   typeSlug: string;
   qrSvg: string;
   showPhoto: boolean;
   photoDataUrl?: string | null;
+  design?: CardDesign | null;
+};
+
+export type CardDesign = {
+  background?: string;
+  surface?: string;
+  accent?: string;
+  text?: string;
+  muted?: string;
+  showSeal?: boolean;
+  showMemberSince?: boolean;
+  showBenefits?: boolean;
+  frontTaglineAr?: string;
+  frontTaglineEn?: string;
 };
 
 type CardFamily = {
@@ -82,6 +97,12 @@ function familyForSlug(slug: string): CardFamily {
 
 export function renderCardFrontSvg(input: CardRenderInput, width = 1600, height = 1000): string {
   const family = familyForSlug(input.typeSlug);
+  const design = input.design ?? {};
+  const background = design.background ?? "#071526";
+  const surface = design.surface ?? "#0B1D33";
+  const accent = design.accent ?? "#C9A45F";
+  const text = design.text ?? "#F7F3EA";
+  const muted = design.muted ?? "#C6B994";
   const isAr = input.locale === "ar";
   const clinic = isAr ? "عيادة الاستراتيجية والتنفيذ" : "Strategy & Execution Clinic";
   const clinicSub = isAr ? "Strategy & Execution Clinic" : "عيادة الاستراتيجية والتنفيذ";
@@ -91,6 +112,9 @@ export function renderCardFrontSvg(input: CardRenderInput, width = 1600, height 
     (isAr ? input.primaryTrackEn : input.primaryTrackAr) ??
     "";
   const dir = isAr ? "rtl" : "ltr";
+  const tagline = isAr
+    ? design.frontTaglineAr ?? "من التشخيص... إلى التنفيذ... إلى الأثر"
+    : design.frontTaglineEn ?? "From diagnosis to execution to impact";
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" direction="${dir}">
@@ -103,43 +127,60 @@ export function renderCardFrontSvg(input: CardRenderInput, width = 1600, height 
       <path d="M 24 0 L 0 0 0 24" fill="none" stroke="${family.accent}" stroke-opacity="${family.patternOpacity}" stroke-width="1"/>
     </pattern>
   </defs>
-  <rect width="100%" height="100%" fill="#FFFFFF"/>
+  <rect width="100%" height="100%" fill="${background}"/>
+  <rect x="18" y="18" width="${width - 36}" height="${height - 36}" rx="42" fill="${surface}" stroke="${accent}" stroke-width="4"/>
   <rect width="100%" height="100%" fill="url(#grid)"/>
-  <rect x="24" y="24" width="${width - 48}" height="${height - 48}" fill="none" stroke="${family.border}" stroke-width="3" rx="18"/>
-  <text x="${isAr ? width - 80 : 80}" y="110" fill="#152238" font-family="IBM Plex Sans Arabic, IBM Plex Sans, sans-serif" font-size="34" font-weight="600" text-anchor="${isAr ? "end" : "start"}">${escapeXml(clinic)}</text>
-  <text x="${isAr ? width - 80 : 80}" y="150" fill="#6B7280" font-family="IBM Plex Sans, IBM Plex Sans Arabic, sans-serif" font-size="20" text-anchor="${isAr ? "end" : "start"}">${escapeXml(clinicSub)}</text>
+  <path d="M70 70 H520" stroke="${accent}" stroke-width="3" opacity=".75"/>
+  <text x="${isAr ? width - 90 : 90}" y="110" fill="${text}" font-family="Noto Sans Arabic, IBM Plex Sans Arabic, sans-serif" font-size="34" font-weight="700" text-anchor="${isAr ? "end" : "start"}">${escapeXml(clinic)}</text>
+  <text x="${isAr ? width - 90 : 90}" y="152" fill="${muted}" font-family="IBM Plex Sans, sans-serif" font-size="20" text-anchor="${isAr ? "end" : "start"}">${escapeXml(clinicSub)}</text>
   ${
     family.engraving
       ? `<text x="${width / 2}" y="220" fill="${family.accent}" opacity="0.35" font-family="IBM Plex Sans, sans-serif" font-size="18" letter-spacing="6" text-anchor="middle">${escapeXml(family.engraving)}</text>`
       : ""
   }
-  <text x="${width / 2}" y="420" fill="#152238" font-family="IBM Plex Sans Arabic, IBM Plex Sans, sans-serif" font-size="64" font-weight="600" text-anchor="middle">${escapeXml(input.memberName)}</text>
-  <text x="${width / 2}" y="500" fill="#4B5563" font-family="IBM Plex Sans Arabic, IBM Plex Sans, sans-serif" font-size="30" text-anchor="middle">${escapeXml(typeName)}</text>
+  <text x="${width / 2}" y="245" fill="${accent}" font-family="IBM Plex Sans, sans-serif" font-size="22" letter-spacing="7" text-anchor="middle">PROFESSIONAL</text>
+  <text x="${width / 2}" y="330" fill="${accent}" font-family="IBM Plex Sans, sans-serif" font-size="62" font-weight="700" letter-spacing="8" text-anchor="middle">${escapeXml(typeName.toUpperCase())}</text>
+  <text x="${width / 2}" y="385" fill="${muted}" font-family="Noto Sans Arabic, sans-serif" font-size="24" text-anchor="middle">${escapeXml(tagline)}</text>
+  <text x="${isAr ? width - 160 : 160}" y="565" fill="${text}" font-family="Noto Sans Arabic, IBM Plex Sans, sans-serif" font-size="48" font-weight="600" text-anchor="${isAr ? "end" : "start"}">${escapeXml(input.memberName)}</text>
   ${
     track
-      ? `<text x="${width / 2}" y="560" fill="#6B7280" font-family="IBM Plex Sans Arabic, IBM Plex Sans, sans-serif" font-size="24" text-anchor="middle">${escapeXml(track)}</text>`
+      ? `<text x="${isAr ? width - 160 : 160}" y="630" fill="${muted}" font-family="Noto Sans Arabic, IBM Plex Sans, sans-serif" font-size="25" text-anchor="${isAr ? "end" : "start"}">${escapeXml(track)}</text>`
       : ""
   }
-  <text x="${width / 2}" y="700" fill="#A68654" font-family="IBM Plex Sans, monospace" font-size="28" letter-spacing="2" text-anchor="middle">${escapeXml(input.publicCode)}</text>
-  <text x="${width / 2}" y="760" fill="#2F6F4E" font-family="IBM Plex Sans Arabic, IBM Plex Sans, sans-serif" font-size="22" text-anchor="middle">${escapeXml(input.statusLabel)}</text>
-  <text x="${isAr ? 80 : width - 80}" y="${height - 60}" fill="#6B7280" font-family="IBM Plex Sans, sans-serif" font-size="18" text-anchor="${isAr ? "start" : "end"}">${input.issuedYear}</text>
+  <line x1="150" y1="690" x2="${width - 150}" y2="690" stroke="${accent}" opacity=".45"/>
+  <text x="${isAr ? width - 160 : 160}" y="750" fill="${muted}" font-family="Noto Sans Arabic, sans-serif" font-size="22" text-anchor="${isAr ? "end" : "start"}">${isAr ? "رقم العضوية" : "Member ID"}</text>
+  <text x="${isAr ? width - 500 : 500}" y="750" fill="${text}" font-family="IBM Plex Sans, monospace" font-size="27" text-anchor="${isAr ? "end" : "start"}">${escapeXml(input.publicCode)}</text>
+  ${design.showMemberSince === false ? "" : `<text x="${isAr ? width - 160 : 160}" y="815" fill="${muted}" font-family="Noto Sans Arabic, sans-serif" font-size="22" text-anchor="${isAr ? "end" : "start"}">${isAr ? "تاريخ الانضمام" : "Member since"}</text><text x="${isAr ? width - 500 : 500}" y="815" fill="${text}" font-family="IBM Plex Sans, sans-serif" font-size="25" text-anchor="${isAr ? "end" : "start"}">${escapeXml(input.issuedAtLabel ?? String(input.issuedYear))}</text>`}
+  <g transform="translate(${width - 360}, 610) scale(.78)">${input.qrSvg.replace(/<\?xml[^>]*>/, "").trim()}</g>
+  ${design.showSeal === false ? "" : `<circle cx="${width - 235}" cy="430" r="92" fill="none" stroke="${accent}" stroke-width="5"/><circle cx="${width - 235}" cy="430" r="70" fill="none" stroke="${accent}" stroke-width="2"/><text x="${width - 235}" y="422" fill="${accent}" font-size="45" text-anchor="middle">✓</text><text x="${width - 235}" y="466" fill="${accent}" font-family="IBM Plex Sans" font-size="17" text-anchor="middle">APPROVED MEMBER</text>`}
+  <text x="80" y="${height - 65}" fill="${muted}" font-family="IBM Plex Sans Arabic, sans-serif" font-size="18">${escapeXml(input.statusLabel)} · ${input.issuedYear}</text>
 </svg>`;
 }
 
 export function renderCardBackSvg(input: CardRenderInput, width = 1600, height = 1000): string {
   const isAr = input.locale === "ar";
-  const scan = isAr ? "امسح للتحقق" : "Scan to verify";
+  const design = input.design ?? {};
+  const background = design.background ?? "#071526";
+  const surface = design.surface ?? "#0B1D33";
+  const accent = design.accent ?? "#C9A45F";
+  const text = design.text ?? "#F7F3EA";
+  const muted = design.muted ?? "#C6B994";
   const domain = "strategyexecution.clinic";
-  const qrInner = input.qrSvg.replace(/<\?xml[^>]*>/, "").trim();
+  const charter = isAr
+    ? "أتعهد بأن أكون عضوًا فاعلًا في مجتمع عيادة الاستراتيجية والتنفيذ، وأن أشارك المعرفة، وأحترم أخلاقيات المهنة، وأسهم في تطوير الجهات وتحقيق أثر مؤسسي مستدام."
+    : "I commit to active participation, responsible knowledge sharing, professional ethics, and sustainable institutional impact.";
+  const benefits = isAr ? "مجتمع مهني · لقاءات ونقاشات · مكتبة معرفية · شهادة عضوية · أولوية في المبادرات · فرص تطوعية" : "Professional community · Sessions · Knowledge library · Certificate · Initiative priority · Volunteering";
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-  <rect width="100%" height="100%" fill="#F7F5F1"/>
-  <rect x="24" y="24" width="${width - 48}" height="${height - 48}" fill="#FFFFFF" stroke="#D4CDBF" stroke-width="2" rx="18"/>
-  <g transform="translate(${width / 2 - 180}, 220) scale(1.4)">${qrInner}</g>
-  <text x="${width / 2}" y="780" fill="#152238" font-family="IBM Plex Sans Arabic, IBM Plex Sans, sans-serif" font-size="28" text-anchor="middle">${escapeXml(scan)}</text>
-  <text x="${width / 2}" y="840" fill="#6B7280" font-family="IBM Plex Sans, sans-serif" font-size="22" text-anchor="middle">${escapeXml(domain)}</text>
-  <text x="${width / 2}" y="900" fill="#6B7280" font-family="IBM Plex Sans, monospace" font-size="20" text-anchor="middle">${escapeXml(input.publicCode)}</text>
+  <rect width="100%" height="100%" fill="${background}"/>
+  <rect x="18" y="18" width="${width - 36}" height="${height - 36}" rx="42" fill="${surface}" stroke="${accent}" stroke-width="4"/>
+  <text x="${width / 2}" y="150" fill="${accent}" font-family="Noto Sans Arabic, IBM Plex Sans" font-size="38" font-weight="700" text-anchor="middle">${isAr ? "ميثاق عضو العيادة" : "Clinic Member Charter"}</text>
+  <line x1="350" y1="185" x2="${width - 350}" y2="185" stroke="${accent}" opacity=".65"/>
+  <foreignObject x="200" y="230" width="1200" height="210"><div xmlns="http://www.w3.org/1999/xhtml" dir="${isAr ? "rtl" : "ltr"}" style="color:${text};font-family:'Noto Sans Arabic',sans-serif;font-size:29px;line-height:1.8;text-align:center">${escapeXml(charter)}</div></foreignObject>
+  ${design.showBenefits === false ? "" : `<text x="${width / 2}" y="560" fill="${accent}" font-family="Noto Sans Arabic, IBM Plex Sans" font-size="34" font-weight="700" text-anchor="middle">${isAr ? "مزايا العضوية" : "Membership Benefits"}</text><foreignObject x="160" y="600" width="1280" height="130"><div xmlns="http://www.w3.org/1999/xhtml" dir="${isAr ? "rtl" : "ltr"}" style="color:${muted};font-family:'Noto Sans Arabic',sans-serif;font-size:24px;line-height:1.8;text-align:center">${escapeXml(benefits)}</div></foreignObject>`}
+  <line x1="120" y1="790" x2="${width - 120}" y2="790" stroke="${accent}" opacity=".35"/>
+  <text x="${width / 2}" y="855" fill="${muted}" font-family="IBM Plex Sans" font-size="22" text-anchor="middle">${escapeXml(domain)} · ${escapeXml(input.publicCode)}</text>
 </svg>`;
 }
 

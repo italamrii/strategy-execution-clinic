@@ -71,6 +71,13 @@
       "when": 1788156000000,
       "tag": "0009_seed_official_tracks",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788937200000,
+      "tag": "0010_consultations_cards_meetings",
+      "breakpoints": true
     }
   ]
 }

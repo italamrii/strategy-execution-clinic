@@ -8,6 +8,8 @@ const LINKS = [
   { key: "memberships", href: "/admin/memberships" },
   { key: "tracks", href: "/admin/tracks" },
   { key: "credentials", href: "/admin/credentials" },
+  { key: "cardTemplates", href: "/admin/card-templates" },
+  { key: "consultations", href: "/admin/consultations" },
   { key: "volunteers", href: "/admin/volunteers" },
   { key: "contributions", href: "/admin/contributions" },
   { key: "recognition", href: "/admin/recognition" },
