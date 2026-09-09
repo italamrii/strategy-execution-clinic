@@ -30,7 +30,6 @@ export const PERMISSIONS = [
   "credential.asset.generate",
   "credential.audit.read",
   "credential.render",
-  "credential.revoke",
   "volunteer.profile.read.own",
   "volunteer.profile.update.own",
   "volunteer.profile.read.any",
@@ -130,7 +129,14 @@ export const PERMISSIONS = [
   "meeting.read.own",
   "meeting.create",
   "meeting.manage",
+  "meeting.start",
   "credential.template.manage",
+  "admin.settings.manage",
+  "membership.manage",
+  "volunteer.manage",
+  "card.read.own",
+  "card.template.manage",
+  "track.member.manage",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -146,6 +152,9 @@ export const ROLE_SEEDS = [
   { slug: "content_manager", nameAr: "مدير محتوى", nameEn: "Content Manager" },
   { slug: "partner_manager", nameAr: "مدير الشراكات", nameEn: "Partner Manager" },
   { slug: "auditor", nameAr: "مدقق", nameEn: "Auditor" },
+  { slug: "expert", nameAr: "خبير", nameEn: "Expert" },
+  { slug: "founder", nameAr: "مؤسس", nameEn: "Founder" },
+  { slug: "volunteer", nameAr: "متطوع", nameEn: "Volunteer" },
   { slug: "member", nameAr: "عضو", nameEn: "Member" },
 ] as const;
 
@@ -167,6 +176,7 @@ const MEMBERSHIP_ADMIN_PERMS = [
   "membership.issue",
   "membership.suspend",
   "membership.revoke",
+  "membership.manage",
   "admin.dashboard.read",
 ] as const satisfies readonly Permission[];
 
@@ -189,6 +199,7 @@ const VOLUNTEER_ADMIN_PERMS = [
   "volunteer.progression.read",
   "volunteer.progression.manage",
   "volunteer.impact.read.any",
+  "volunteer.manage",
   "admin.dashboard.read",
 ] as const satisfies readonly Permission[];
 
@@ -271,6 +282,7 @@ const TRACK_ADMIN_PERMS = [
   "track.event.manage",
   "track.analytics.read",
   "track.announcement.manage",
+  "track.member.manage",
 ] as const satisfies readonly Permission[];
 
 const TRACK_LEADER_PERMS = [
@@ -288,7 +300,9 @@ const TRACK_LEADER_PERMS = [
   "track.event.manage",
   "track.analytics.read",
   "track.announcement.manage",
+  "track.member.manage",
   "volunteer.hours.review",
+  "meeting.start",
 ] as const satisfies readonly Permission[];
 
 const MEMBER_TRACK_PERMS = [
@@ -307,6 +321,7 @@ const OPS_ADMIN_PERMS = [
   "audit.read",
   "security.events.read",
   "settings.manage",
+  "admin.settings.manage",
   "notification.ops.read",
   "notification.ops.manage",
   "announcement.manage",
@@ -324,6 +339,7 @@ const CONSULTATION_ADMIN_PERMS = [
   "meeting.read.own",
   "meeting.create",
   "meeting.manage",
+  "meeting.start",
 ] as const satisfies readonly Permission[];
 
 export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
@@ -346,6 +362,7 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     ...TRACK_ADMIN_PERMS,
     ...CONSULTATION_ADMIN_PERMS,
     "credential.template.manage",
+    "card.template.manage",
     ...OPS_ADMIN_PERMS,
   ],
   membership_admin: [
@@ -356,6 +373,7 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     "credential.suspend",
     "credential.revoke",
     "credential.template.manage",
+    "card.template.manage",
     "credential.asset.generate",
     "credential.audit.read",
     "credential.render",
@@ -370,6 +388,8 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     "consultation.respond",
     "meeting.read.own",
     "meeting.create",
+    "meeting.start",
+    "track.member.manage",
   ],
   volunteer_leader: VOLUNTEER_LEADER_PERMS,
   reviewer: [
@@ -391,8 +411,54 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     "consultation.respond",
     "meeting.read.own",
   ],
-  content_manager: ["content.write", "content.read", "announcement.manage"],
+  content_manager: [
+    "admin.dashboard.read",
+    "content.write",
+    "content.read",
+    "announcement.manage",
+  ],
   partner_manager: ["partner.write"],
+  expert: [
+    "membership.type.read",
+    "membership.track.read",
+    "membership.read.own",
+    "credential.read.own",
+    "card.read.own",
+    "track.read",
+    "consultation.read.own",
+    "consultation.read.assigned",
+    "consultation.respond",
+    "meeting.read.own",
+    "meeting.create",
+    "meeting.start",
+  ],
+  founder: [
+    "membership.type.read",
+    "membership.track.read",
+    "membership.application.create",
+    "membership.application.read.own",
+    "membership.application.withdraw.own",
+    "membership.read.own",
+    "credential.read.own",
+    "card.read.own",
+    ...MEMBER_TRACK_PERMS,
+    ...MEMBER_RECOGNITION_PERMS,
+    "consultation.create",
+    "consultation.read.own",
+    "meeting.read.own",
+  ],
+  volunteer: [
+    "membership.read.own",
+    "credential.read.own",
+    "card.read.own",
+    ...MEMBER_VOLUNTEER_PERMS,
+    "contribution.create.own",
+    "contribution.read.own",
+    "badge.read.own",
+    "certificate.read.own",
+    "notification.read.own",
+    "notification.manage.own",
+  ],
   auditor: [
     "rbac.role.read",
     "security.events.read",
@@ -423,5 +489,6 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     "consultation.create",
     "consultation.read.own",
     "meeting.read.own",
+    "card.read.own",
   ],
 };

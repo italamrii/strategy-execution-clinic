@@ -41,6 +41,7 @@ test.describe("identity e2e", () => {
     await page.getByRole("button", { name: /Sign out|تسجيل الخروج/ }).first().click();
     await expect(page).toHaveURL(/\/en\/login/);
     await page.goto("/en/admin/probe");
-    await expect(page.getByRole("heading", { name: /Unauthorized|Forbidden/ })).toBeVisible();
+    await expect(page.locator('[data-access="denied"]')).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
 });

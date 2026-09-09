@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { writeAudit } from "@/modules/audit";
-import { requirePermission } from "@/modules/identity";
+import { requireAnyPermission } from "@/modules/identity";
 import { getDb } from "@/shared/db/client";
 import { membershipCardTemplates } from "@/shared/db/schema";
 import type { CardDesign } from "./card-svg";
@@ -51,7 +51,7 @@ export async function saveCardTemplate(input: {
   config: CardDesign;
   requestId?: string | null;
 }) {
-  await requirePermission(input.actorUserId, "credential.template.manage");
+  await requireAnyPermission(input.actorUserId, ["card.template.manage", "credential.template.manage"]);
   const db = getDb();
   if (input.status === "active") {
     const activeRows = await db.query.membershipCardTemplates.findMany({

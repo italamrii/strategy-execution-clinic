@@ -47,12 +47,12 @@ export function SiteHeader({ signedIn = false, unreadNotifications = 0 }: { sign
           {signedIn ? <Link className="header-login" href="/account">{t("account")}{unreadNotifications > 0 ? <b className="numeric">{unreadNotifications}</b> : null}</Link> : <Link className="header-login" href="/login">{t("login")}</Link>}
           <Link className="header-join" href="/membership/apply">{t("join")}</Link>
         </div>
-        <button className="menu-trigger" type="button" aria-expanded={open} aria-controls="mobile-navigation" aria-label={open ? "Close" : "Menu"} onClick={() => setOpen(!open)}>
+        <button className="menu-trigger" type="button" aria-expanded={open} aria-controls="mobile-navigation" aria-label={open ? t("closeMenu") : t("openMenu")} onClick={() => setOpen(!open)}>
           <span /><span />
         </button>
       </div>
-      <div className={`mobile-drawer${open ? " is-open" : ""}`} id="mobile-navigation" aria-hidden={!open} ref={drawerRef}>
-        <div className="mobile-drawer__top"><div className="wordmark"><strong>عيادة الاستراتيجية والتنفيذ</strong><span>STRATEGY &amp; EXECUTION CLINIC</span></div><button type="button" onClick={() => setOpen(false)} aria-label="Close">×</button></div>
+        <div className={`mobile-drawer${open ? " is-open" : ""}`} id="mobile-navigation" aria-hidden={!open} ref={drawerRef}>
+        <div className="mobile-drawer__top"><div className="wordmark"><strong>عيادة الاستراتيجية والتنفيذ</strong><span>STRATEGY &amp; EXECUTION CLINIC</span></div><button type="button" onClick={() => setOpen(false)} aria-label={t("closeMenu")}>×</button></div>
         <nav>{links.map(([href, label], index) => <Link key={href} href={href} onClick={() => setOpen(false)}><span className="numeric">0{index + 1}</span>{label}<i aria-hidden>↗</i></Link>)}</nav>
         <div className="mobile-drawer__actions"><LanguageSwitcher /><Link href={signedIn ? "/account" : "/login"}>{signedIn ? t("account") : t("login")}</Link><Link className="institutional-button institutional-button--primary" href="/membership/apply">{t("join")}</Link></div>
       </div>

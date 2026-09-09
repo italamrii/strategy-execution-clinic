@@ -97,7 +97,7 @@ test.describe("recognition e2e", () => {
     await expect(memberPage.getByText(/submitted for review/i)).toBeVisible({ timeout: 15_000 });
 
     await memberPage.goto("/en/admin/contributions");
-    await expect(memberPage.getByText(/Forbidden|غير مصرح|Forbidden/i)).toBeVisible();
+    await expect(memberPage.locator('[data-access="denied"]')).toBeVisible();
 
     await adminPage.goto("/en/admin/contributions");
     await adminPage.getByRole("button", { name: /Approve/i }).first().click();
@@ -219,7 +219,7 @@ test.describe("recognition e2e", () => {
     await access(path.join(SCREENSHOT_DIR, "badge-volunteer.png"));
 
     await memberPage.goto("/en/admin/volunteers");
-    await expect(memberPage.getByText(/Forbidden|غير مصرح|Forbidden/i).or(memberPage.locator("h1"))).toBeVisible();
+    await expect(memberPage.locator('[data-access="denied"]')).toBeVisible();
 
     await adminPage.goto("/en/admin/recognition/certificates");
     await adminPage.locator('input[name="certificateId"]').fill(certId);

@@ -1,14 +1,62 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { redirect } from "@/i18n/navigation";
+import { notFound } from "next/navigation";
 import { requireLocale } from "@/i18n/locale";
-import { getOptionalAuthContext } from "@/modules/identity";
-import { getMeetingForUser } from "@/modules/meetings";
+import { redirect as localeRedirect } from "@/i18n/navigation";
+import { resolvePageAccess } from "@/modules/identity";
+import { getMeetingForUser, MeetingError } from "@/modules/meetings";
 import { MeetingRoom } from "@/modules/meetings/ui/meeting-room";
+import { MeetingStatusActions } from "@/modules/meetings/ui/meeting-status-actions";
+import { AccessDenied } from "@/shared/ui/access-denied";
 
 export const dynamic = "force-dynamic";
-export default async function MeetingPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
-  const { locale: raw, id } = await params; const locale = requireLocale(raw); setRequestLocale(locale);
-  const auth = await getOptionalAuthContext(); if (!auth) redirect({ href: "/login", locale });
-  const [t, meeting] = await Promise.all([getTranslations("meetings"), getMeetingForUser(auth!.userId, id)]);
-  return <main className="mx-auto max-w-7xl px-6 py-10"><p className="eyebrow">SEC · MEET</p><h1 className="mt-3 text-4xl text-ink">{meeting.title}</h1><p className="mt-3 text-graphite">{t("deviceNote")}</p><MeetingRoom meetingId={meeting.id} title={meeting.title} embedUrl={meeting.embedUrl} allowVideo={meeting.allowVideo} /></main>;
+
+export default async function MeetingPage({
+  params,
+}: {
+  params: Promise<{ locale: string; id: string }>;
+}) {
+  const { locale: raw, id } = await params;
+  const locale = requireLocale(raw);
+  setRequestLocale(locale);
+  const access = await resolvePageAccess("meeting.read.own");
+  if (access.status === "unauthenticated") localeRedirect({ href: "/login", locale });
+  if (access.status !== "ok") {
+    return <AccessDenied status={access.status} email={access.auth?.email ?? null} />;
+  }
+  const t = await getTranslations("meetings");
+  let meeting;
+  try {
+    meeting = await getMeetingForUser(access.auth.userId, id);
+  } catch (error) {
+    if (error instanceof MeetingError && error.code === "forbidden") {
+      return <AccessDenied status="forbidden" email={access.auth.email} />;
+    }
+    if (error instanceof MeetingError && error.code === "not_found") notFound();
+    throw error;
+  }
+  const statusLabel = t(`status.${meeting.status}` as "status.scheduled");
+  return (
+    <main className="mx-auto max-w-7xl px-6 py-10">
+      <p className="eyebrow">SEC · MEET</p>
+      <h1 className="mt-3 text-4xl text-ink">{meeting.title}</h1>
+      <p className="mt-3 text-graphite">{t("deviceNote")}</p>
+      <p className="mt-2 text-sm text-muted">{statusLabel}</p>
+      <MeetingStatusActions
+        meetingId={meeting.id}
+        canStart={meeting.canStart}
+        canComplete={meeting.canComplete}
+        canCancel={meeting.canCancel}
+      />
+      {meeting.embedUrl && meeting.status !== "cancelled" && meeting.status !== "completed" ? (
+        <MeetingRoom
+          meetingId={meeting.id}
+          title={meeting.title}
+          embedUrl={meeting.embedUrl}
+          allowVideo={meeting.allowVideo}
+        />
+      ) : (
+        <p className="mt-8 rounded-2xl bg-stone p-6 text-graphite">{t("roomUnavailable")}</p>
+      )}
+    </main>
+  );
 }

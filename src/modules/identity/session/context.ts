@@ -4,7 +4,7 @@ import {
   ClerkMappingError,
   syncClerkIdentityToLocalUser,
 } from "../auth/clerk-sync";
-import { buildActor, getRolesForUser, requirePermission } from "../rbac/service";
+import { buildActor, getRolesForUser, requireAnyPermission, requirePermission } from "../rbac/service";
 import { readSessionToken } from "../session/cookie";
 import { resolveSessionByToken } from "../session/service";
 import { AuthorizationError } from "@/shared/security/authorization";
@@ -178,4 +178,42 @@ export async function requireAuthenticatedPermission(
   const ctx = await requireAuthenticatedUser();
   await requirePermission(ctx.userId, permission);
   return ctx;
+}
+
+export async function requireAuthenticatedAnyPermission(
+  permissions: readonly string[],
+): Promise<AuthContext> {
+  const ctx = await requireAuthenticatedUser();
+  await requireAnyPermission(ctx.userId, permissions);
+  return ctx;
+}
+
+export type PageAccess =
+  | { status: "ok"; auth: AuthContext }
+  | { status: "unauthenticated"; auth: null }
+  | { status: "forbidden"; auth: AuthContext };
+
+export async function resolvePageAccess(
+  permission?: string | readonly string[],
+): Promise<PageAccess> {
+  const auth = await getOptionalAuthContext();
+  if (!auth) {
+    return { status: "unauthenticated", auth: null };
+  }
+  if (!permission) {
+    return { status: "ok", auth };
+  }
+  try {
+    if (typeof permission === "string") {
+      await requirePermission(auth.userId, permission);
+    } else {
+      await requireAnyPermission(auth.userId, permission);
+    }
+    return { status: "ok", auth };
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      return { status: "forbidden", auth };
+    }
+    throw error;
+  }
 }

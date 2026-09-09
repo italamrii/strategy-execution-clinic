@@ -91,6 +91,6 @@ test.describe("membership e2e", () => {
     const email = `e2e-unauth-${Date.now()}@clinic.test`;
     await login(page, "en", email);
     await page.goto("/en/admin/memberships/applications");
-    await expect(page.getByRole("heading", { name: /Forbidden|ممنوع/i })).toBeVisible();
+    await expect(page.locator('[data-access="denied"]')).toBeVisible();
   });
 });

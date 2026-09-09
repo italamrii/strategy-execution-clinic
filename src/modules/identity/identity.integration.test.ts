@@ -22,6 +22,7 @@ import {
   assignRole,
   buildActor,
   createSession,
+  getPermissionsForUser,
   getPrivateAccount,
   publicProfileLeaksPrivate,
   requestLoginOtp,
@@ -30,6 +31,7 @@ import {
   revokeAllSessionsForUser,
   revokeSession,
   seedRbacCatalog,
+  syncClerkIdentityToLocalUser,
   toPublicProfileDto,
   updateLocale,
   verifyLoginOtp,
@@ -272,5 +274,79 @@ describe("identity integration", () => {
     await expect(
       requestLoginOtp({ email: limited, locale: "ar", ip: "198.51.100.1" }),
     ).rejects.toBeInstanceOf(RateLimitError);
+  });
+
+  it("maps Clerk identities by clerk id then email, preserves UUID, and is idempotent", async () => {
+    const email = `clerk-map-${Date.now()}@clinic.test`;
+    const first = await syncClerkIdentityToLocalUser({
+      clerkUserId: "user_clerk_map_1",
+      email,
+    });
+    const second = await syncClerkIdentityToLocalUser({
+      clerkUserId: "user_clerk_map_1",
+      email,
+    });
+    expect(second.id).toBe(first.id);
+    await expect(
+      syncClerkIdentityToLocalUser({
+        clerkUserId: "user_clerk_map_2",
+        email,
+      }),
+    ).rejects.toMatchObject({ code: "mapping_failed" });
+  });
+
+  it("denies suspended users during Clerk mapping", async () => {
+    const email = `clerk-suspend-${Date.now()}@clinic.test`;
+    const local = await syncClerkIdentityToLocalUser({
+      clerkUserId: "user_clerk_suspend",
+      email,
+    });
+    const db = getDb();
+    await db.update(users).set({ status: "suspended", suspendedAt: new Date(), updatedAt: new Date() }).where(eq(users.id, local.id));
+    await expect(
+      syncClerkIdentityToLocalUser({
+        clerkUserId: "user_clerk_suspend",
+        email,
+      }),
+    ).rejects.toMatchObject({ code: "account_restricted" });
+  });
+
+  it("does not let organization-scoped roles grant global admin permissions", async () => {
+    const email = `org-scope-${Date.now()}@clinic.test`;
+    await requestLoginOtp({ email, locale: "ar", ip: "127.0.0.1" });
+    const login = await verifyLoginOtp({
+      email,
+      code: getLatestOtpForEmail(email)!,
+      ip: "127.0.0.1",
+    });
+    const db = getDb();
+    const superRole = await db.query.roles.findFirst({ where: eq(roles.slug, "super_admin") });
+    await db.insert(userRoles).values({
+      id: uuidv7(),
+      userId: login.userId,
+      roleId: superRole!.id,
+      organizationId: uuidv7(),
+      grantedBy: null,
+    });
+    const permissions = await getPermissionsForUser(login.userId);
+    expect(permissions.includes("admin.dashboard.read")).toBe(false);
+    await expect(requirePermission(login.userId, "admin.dashboard.read")).rejects.toBeInstanceOf(
+      AuthorizationError,
+    );
+  });
+
+  it("applies member fallback only when no global roles are assigned", async () => {
+    const email = `fallback-${Date.now()}@clinic.test`;
+    await requestLoginOtp({ email, locale: "ar", ip: "127.0.0.1" });
+    const login = await verifyLoginOtp({
+      email,
+      code: getLatestOtpForEmail(email)!,
+      ip: "127.0.0.1",
+    });
+    const db = getDb();
+    await db.delete(userRoles).where(eq(userRoles.userId, login.userId));
+    const permissions = await getPermissionsForUser(login.userId);
+    expect(permissions.includes("consultation.create")).toBe(true);
+    expect(permissions.includes("admin.dashboard.read")).toBe(false);
   });
 });

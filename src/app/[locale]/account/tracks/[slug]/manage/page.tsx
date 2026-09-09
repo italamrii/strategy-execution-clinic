@@ -7,6 +7,7 @@ import {
   TrackApplicationReviewActions,
   TrackContributionReviewActions,
 } from "@/modules/tracks/ui/track-review-actions";
+import { AccessDenied } from "@/shared/ui/access-denied";
 import { AuthorizationError } from "@/shared/security/authorization";
 import { notFound } from "next/navigation";
 
@@ -21,18 +22,21 @@ export default async function TrackManagePage({
   const locale = requireLocale(localeParam);
   setRequestLocale(locale);
   const auth = await getOptionalAuthContext();
-  if (!auth) redirect({ href: "/login", locale });
+  if (!auth) {
+    redirect({ href: "/login", locale });
+  }
+  const actor = auth!;
   const t = await getTranslations("tracks");
   let workspace;
   try {
     workspace = await getLeaderWorkspace({
-      actorUserId: auth!.userId,
+      actorUserId: actor.userId,
       slug,
     });
   } catch (error) {
     if (error instanceof TrackError) notFound();
     if (error instanceof AuthorizationError) {
-      redirect({ href: `/account/tracks/${slug}`, locale });
+      return <AccessDenied status="forbidden" email={actor.email} />;
     }
     throw error;
   }

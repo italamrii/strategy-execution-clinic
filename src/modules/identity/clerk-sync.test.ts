@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planClerkUserMapping } from "./auth/clerk-sync";
+import { planClerkUserMapping, shouldAssignDefaultMemberRole } from "./auth/clerk-sync";
 import { validateEnvironment } from "@/shared/config/env";
 import { resolveAuthProvider } from "@/shared/config/auth-provider";
 
@@ -176,6 +176,13 @@ describe("suspended account mapping decision", () => {
       expect(plan.user.status).toBe("suspended");
       expect(plan.user.id).toBe(suspended.id);
     }
+  });
+});
+
+describe("default member role assignment", () => {
+  it("assigns member only when the user has no roles yet", () => {
+    expect(shouldAssignDefaultMemberRole(0)).toBe(true);
+    expect(shouldAssignDefaultMemberRole(1)).toBe(false);
   });
 });
 

@@ -153,7 +153,14 @@ export const userRoles = pgTable("user_roles", {
   organizationId: uuid("organization_id"),
   grantedBy: uuid("granted_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  uniqueIndex("user_roles_user_role_global_unique")
+    .on(t.userId, t.roleId)
+    .where(sql`${t.organizationId} is null`),
+  uniqueIndex("user_roles_user_role_org_unique")
+    .on(t.userId, t.roleId, t.organizationId)
+    .where(sql`${t.organizationId} is not null`),
+]);
 
 export const membershipTypes = pgTable("membership_types", {
   id: uuid("id").primaryKey(),

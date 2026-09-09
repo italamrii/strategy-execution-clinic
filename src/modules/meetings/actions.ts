@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { requireAuthenticatedUser } from "@/modules/identity";
 import { MeetingError } from "./errors";
-import { createMeeting, markMeetingJoined } from "./service";
+import { createMeeting, markMeetingJoined, updateMeetingStatus } from "./service";
 
 export type MeetingActionResult = { ok: true; id?: string } | { ok: false; code: string };
 
@@ -49,6 +49,28 @@ export async function markMeetingJoinedAction(meetingId: string): Promise<Meetin
     const auth = await requireAuthenticatedUser();
     z.string().uuid().parse(meetingId);
     await markMeetingJoined(auth.userId, meetingId);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, code: error instanceof MeetingError ? error.code : "invalid_input" };
+  }
+}
+
+export async function updateMeetingStatusAction(input: {
+  meetingId: string;
+  status: "live" | "completed" | "cancelled";
+}): Promise<MeetingActionResult> {
+  try {
+    const auth = await requireAuthenticatedUser();
+    const parsed = z.object({
+      meetingId: z.string().uuid(),
+      status: z.enum(["live", "completed", "cancelled"]),
+    }).parse(input);
+    await updateMeetingStatus({
+      actorUserId: auth.userId,
+      meetingId: parsed.meetingId,
+      status: parsed.status,
+      requestId: auth.requestId,
+    });
     return { ok: true };
   } catch (error) {
     return { ok: false, code: error instanceof MeetingError ? error.code : "invalid_input" };
