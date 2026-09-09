@@ -44,6 +44,9 @@ export function LoginForm() {
       if (codeValue === "too_many_requests" || codeValue === "rate_limit_exceeded") {
         return t("errors.rateLimited");
       }
+      if (codeValue) {
+        return `${t("errors.generic")} (${codeValue})`;
+      }
     }
     if (err && typeof err === "object" && "code" in err) {
       const value = String((err as { code: string }).code);
@@ -95,6 +98,7 @@ export function LoginForm() {
       firstName?: string;
       lastName?: string;
       legalAccepted?: boolean;
+      username?: string;
     } = {};
 
     if (
@@ -114,6 +118,13 @@ export function LoginForm() {
     if (missing.has("legal_accepted") || missing.has("legalAccepted")) {
       payload.legalAccepted = true;
     }
+    if (missing.has("username")) {
+      const safeLocalPart = localPart
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, "_")
+        .slice(0, 20);
+      payload.username = `${safeLocalPart || "member"}_${crypto.randomUUID().slice(0, 8)}`;
+    }
 
     const { error } = await signUp.update(payload);
     if (error) throw error;
@@ -121,17 +132,11 @@ export function LoginForm() {
 
   const completeActiveSignIn = async () => {
     if (!signIn) throw new Error("sign_in_unavailable");
-    if (signIn.status !== "complete") {
-      throw Object.assign(new Error("sign_in_incomplete"), {
-        code: "invalid_otp",
-        status: signIn.status,
-      });
-    }
     const { error } = await signIn.finalize({
       navigate: async ({ session }) => {
         if (session?.currentTask) {
           throw Object.assign(new Error("session_task"), {
-            code: "invalid_otp",
+            code: "session_task",
           });
         }
       },
@@ -154,7 +159,7 @@ export function LoginForm() {
 
     if (signUp.status !== "complete") {
       throw Object.assign(new Error("sign_up_incomplete"), {
-        code: "invalid_otp",
+        code: "sign_up_incomplete",
         status: signUp.status,
         missingFields: signUp.missingFields,
         unverifiedFields: signUp.unverifiedFields,
@@ -202,7 +207,7 @@ export function LoginForm() {
       throw error;
     }
 
-    if (signIn.status === "complete") {
+    if (signIn.status === "complete" || signIn.createdSessionId) {
       await completeActiveSignIn();
       return;
     }
@@ -215,7 +220,7 @@ export function LoginForm() {
     }
 
     throw Object.assign(new Error("sign_in_incomplete"), {
-      code: "invalid_otp",
+      code: "sign_in_incomplete",
       status: signIn.status,
     });
   };
