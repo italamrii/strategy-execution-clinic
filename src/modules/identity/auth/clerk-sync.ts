@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { writeAudit, writeSecurityEvent } from "@/modules/audit";
 import { getDb } from "@/shared/db/client";
@@ -94,10 +94,89 @@ async function ensureMemberRole(userId: string): Promise<void> {
   });
 }
 
+/**
+ * Conditionally ensure super_admin role for bootstrap user.
+ * Only assigns if BOOTSTRAP_CONFIRM==='YES' and normalized email matches BOOTSTRAP_ADMIN_EMAIL.
+ * Idempotent: does nothing if role already assigned.
+ * Writes audit event when newly assigned.
+ */
+async function ensureBootstrapSuperAdmin(
+  userId: string,
+  userEmail: string,
+  requestId: string | null,
+): Promise<void> {
+  const bootstrapConfirm = process.env.BOOTSTRAP_CONFIRM;
+  const bootstrapAdminEmail = process.env.BOOTSTRAP_ADMIN_EMAIL;
+
+  // Only proceed if BOOTSTRAP_CONFIRM is explicitly 'YES'
+  if (bootstrapConfirm !== "YES" || !bootstrapAdminEmail) {
+    return;
+  }
+
+  const normalizedUserEmail = normalizeEmail(userEmail);
+  const normalizedBootstrapEmail = normalizeEmail(bootstrapAdminEmail);
+
+  if (!normalizedUserEmail || !normalizedBootstrapEmail) {
+    return;
+  }
+
+  // Only assign if emails match (case-insensitive after normalization)
+  if (normalizedUserEmail !== normalizedBootstrapEmail) {
+    return;
+  }
+
+  const db = getDb();
+  const superAdminRole = await db.query.roles.findFirst({
+    where: eq(roles.slug, "super_admin"),
+  });
+  if (!superAdminRole) {
+    return;
+  }
+
+  const existing = await db.query.userRoles.findFirst({
+    where: and(
+      eq(userRoles.userId, userId),
+      eq(userRoles.roleId, superAdminRole.id),
+      isNull(userRoles.organizationId),
+    ),
+  });
+  if (existing) {
+    // Already assigned, idempotent
+    return;
+  }
+
+  // Assign super_admin role
+  await db.insert(userRoles).values({
+    id: uuidv7(),
+    userId,
+    roleId: superAdminRole.id,
+    organizationId: null,
+    grantedBy: null,
+  });
+
+  // Write audit event for bootstrap super_admin assignment
+  await writeAudit({
+    actorUserId: userId,
+    action: "BOOTSTRAP_SUPER_ADMIN_ASSIGNED",
+    resourceType: "user_role",
+    resourceId: userId,
+    requestId,
+    after: { role: "super_admin", bootstrap: true },
+  });
+
+  await writeSecurityEvent({
+    kind: "privilege_change",
+    userId,
+    requestId,
+    meta: { role: "super_admin", action: "bootstrap_assigned" },
+  });
+}
+
 async function createLocalUserSkeleton(
   email: string,
   clerkUserId: string,
   locale: "ar" | "en",
+  requestId: string | null,
 ): Promise<LocalUserRecord> {
   const db = getDb();
   const id = uuidv7();
@@ -128,6 +207,7 @@ async function createLocalUserSkeleton(
     updatedAt: now,
   });
   await ensureMemberRole(id);
+  await ensureBootstrapSuperAdmin(id, email, requestId);
   return {
     id,
     email,
@@ -150,6 +230,7 @@ function toLocalUser(row: typeof users.$inferSelect): LocalUserRecord {
 /**
  * Map a Clerk identity onto the local users table.
  * Preserves local UUIDs, roles, memberships, and credentials.
+ * Applies bootstrap super_admin role if conditions are met.
  */
 export async function syncClerkIdentityToLocalUser(
   identity: ClerkIdentity,
@@ -204,7 +285,7 @@ export async function syncClerkIdentityToLocalUser(
   const now = new Date();
 
   if (plan.action === "create") {
-    local = await createLocalUserSkeleton(email, identity.clerkUserId, locale);
+    local = await createLocalUserSkeleton(email, identity.clerkUserId, locale, requestId);
   } else if (plan.action === "link") {
     await db
       .update(users)
@@ -216,9 +297,11 @@ export async function syncClerkIdentityToLocalUser(
       .where(eq(users.id, plan.user.id));
     local = { ...plan.user, clerkUserId: identity.clerkUserId };
     await ensureMemberRole(local.id);
+    await ensureBootstrapSuperAdmin(local.id, local.email, requestId);
   } else {
     local = plan.user;
     await ensureMemberRole(local.id);
+    await ensureBootstrapSuperAdmin(local.id, local.email, requestId);
   }
 
   if (local.status !== "active") {
@@ -262,3 +345,4 @@ export async function syncClerkIdentityToLocalUser(
 
   return local;
 }
+
