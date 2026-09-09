@@ -72,7 +72,8 @@ describe("environment validation", () => {
     });
     expect(clerkOk.ok).toBe(true);
 
-    const legacyMemory = validateEnvironment({
+    // Production always requires Clerk keys; legacy OTP/SMTP auth is not supported.
+    const missingClerkKeys = validateEnvironment({
       NODE_ENV: "production",
       APP_ENV: "production",
       DATABASE_URL: "postgres://u:p@db.example.com/clinic",
@@ -85,6 +86,11 @@ describe("environment validation", () => {
       S3_ACCESS_KEY_ID: "key",
       S3_SECRET_ACCESS_KEY: "secret",
     });
-    expect(legacyMemory.ok).toBe(false);
+    expect(missingClerkKeys.ok).toBe(false);
+    if (!missingClerkKeys.ok) {
+      expect(
+        missingClerkKeys.errors.some((e) => e.includes("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY")),
+      ).toBe(true);
+    }
   });
 });

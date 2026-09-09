@@ -19,6 +19,9 @@ ARG NEXT_PUBLIC_CLERK_SIGN_IN_URL=/ar/login
 ENV NEXT_PUBLIC_CLERK_SIGN_IN_URL=$NEXT_PUBLIC_CLERK_SIGN_IN_URL
 ARG NEXT_PUBLIC_CLERK_SIGN_UP_URL=/ar/login
 ENV NEXT_PUBLIC_CLERK_SIGN_UP_URL=$NEXT_PUBLIC_CLERK_SIGN_UP_URL
+# Ensure server components that resolve AUTH_PROVIDER during the production build
+# treat the image as Clerk-backed (secret key is injected at runtime on Railway).
+ENV AUTH_PROVIDER=clerk
 RUN pnpm build
 
 FROM node:24-alpine AS runner
@@ -28,6 +31,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Bind hostname documented in ARCHITECTURE.md (next-intl rewrite safety)
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
+# Auth OTPs are delivered by Clerk in production (not SMTP / local OTP).
+ENV AUTH_PROVIDER=clerk
 RUN addgroup -S clinic && adduser -S clinic -G clinic
 COPY --from=build /app/public ./public
 COPY --from=build /app/.next/standalone ./

@@ -131,6 +131,29 @@ describe("Clerk auth environment validation", () => {
       }),
     ).toBe("clerk");
   });
+
+  it("uses Clerk in production even when AUTH_PROVIDER=legacy if keys are present", () => {
+    expect(
+      resolveAuthProvider({
+        NODE_ENV: "production",
+        APP_ENV: "production",
+        AUTH_PROVIDER: "legacy",
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test",
+        CLERK_SECRET_KEY: "sk_test",
+      }),
+    ).toBe("clerk");
+  });
+
+  it("keeps E2E on legacy so local OTP tests keep working", () => {
+    expect(
+      resolveAuthProvider({
+        E2E: "true",
+        AUTH_PROVIDER: "legacy",
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test",
+        CLERK_SECRET_KEY: "sk_test",
+      }),
+    ).toBe("legacy");
+  });
 });
 
 describe("suspended account mapping decision", () => {

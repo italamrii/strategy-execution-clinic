@@ -2,7 +2,6 @@ import { clerkMiddleware } from "@clerk/nextjs/server";
 import createMiddleware from "next-intl/middleware";
 import { type NextRequest, NextResponse } from "next/server";
 import { routing } from "./i18n/routing";
-import { isClerkAuthProvider } from "./shared/config/auth-provider";
 
 const handleI18n = createMiddleware(routing);
 
@@ -27,9 +26,14 @@ function applyI18n(request: NextRequest): NextResponse {
   return withRequestId(handleI18n(request), request);
 }
 
-const clerkEnabled = isClerkAuthProvider();
+/**
+ * Enable Clerk middleware when the publishable key is present.
+ * NEXT_PUBLIC_* is inlined at build time on Railway, so this stays true in the
+ * Edge bundle after a Clerk-enabled image build (unlike runtime-only AUTH_PROVIDER).
+ */
+const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim();
 
-export default clerkEnabled
+export default clerkPublishableKey
   ? clerkMiddleware(async (_auth, request) => applyI18n(request))
   : function proxy(request: NextRequest) {
       return applyI18n(request);

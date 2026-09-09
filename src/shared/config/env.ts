@@ -59,12 +59,13 @@ function productionErrors(
   if (env.AUTH_DEV_LOG_OTP === "true") errors.push("AUTH_DEV_LOG_OTP=true is forbidden in production");
 
   const authProvider = resolveAuthProvider(source);
-  if (authProvider === "clerk" || env.AUTH_PROVIDER === "clerk") {
+  // Production authentication is Clerk-managed email OTP — never local SMTP OTP.
+  if (authProvider === "clerk" || env.AUTH_PROVIDER === "clerk" || isStrictProduction(source)) {
     if (!env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-      errors.push("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required when AUTH_PROVIDER=clerk");
+      errors.push("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required for Clerk authentication in production");
     }
     if (!env.CLERK_SECRET_KEY) {
-      errors.push("CLERK_SECRET_KEY is required when AUTH_PROVIDER=clerk");
+      errors.push("CLERK_SECRET_KEY is required for Clerk authentication in production");
     }
     // Authentication emails are delivered by Clerk — SMTP is not required for auth.
     if (env.EMAIL_PROVIDER === "smtp") {

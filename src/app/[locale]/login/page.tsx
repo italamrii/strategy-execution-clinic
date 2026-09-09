@@ -6,7 +6,9 @@ import { LoginForm } from "@/modules/identity/ui/login-form";
 import { LegacyLoginForm } from "@/modules/identity/ui/legacy-login-form";
 import { AuthShell } from "@/shared/ui/auth-shell";
 import { isClerkAuthProvider } from "@/shared/config/auth-provider";
-import { resolveAppEnvironment } from "@/shared/config/runtime";
+import { isE2ERuntime, resolveAppEnvironment } from "@/shared/config/runtime";
+
+export const dynamic = "force-dynamic";
 
 export default async function LoginPage({
   params,
@@ -29,7 +31,10 @@ export default async function LoginPage({
           <LoginForm />
         ) : (
           <LegacyLoginForm
-            showLocalOtpHint={resolveAppEnvironment() === "local"}
+            // Never show local OTP developer hints outside true local/e2e runs.
+            showLocalOtpHint={
+              resolveAppEnvironment() === "local" && !isE2ERuntime()
+            }
           />
         )}
       </AuthShell>
