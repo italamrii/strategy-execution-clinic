@@ -7,7 +7,7 @@ Transactional email uses the `EmailProvider` port (`src/shared/ports/email.ts`).
 | `EMAIL_PROVIDER` | Use |
 |------------------|-----|
 | `memory` / `console` | Local dev and tests |
-| `smtp` | Production SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, optional auth) |
+| `smtp` | Optional notification SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, optional auth). Not required for Clerk login OTP when `AUTH_PROVIDER=clerk`. |
 
 Set `EMAIL_CAPTURE=true` or `E2E=true` to append rendered messages to `.data/email-capture.json`.
 

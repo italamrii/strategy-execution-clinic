@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isE2ERuntime, isProductionRuntime, isStrictProduction, resolveAppEnvironment } from "./runtime";
+import { resolveAuthProvider } from "./auth-provider";
 
 const baseSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).optional(),
@@ -7,6 +8,9 @@ const baseSchema = z.object({
   APP_URL: z.string().url().optional(),
   DATABASE_URL: z.string().min(1).optional(),
   AUTH_SECRET: z.string().min(32).optional(),
+  AUTH_PROVIDER: z.enum(["clerk", "legacy"]).optional(),
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().optional(),
+  CLERK_SECRET_KEY: z.string().optional(),
   EMAIL_PROVIDER: z.enum(["console", "memory", "smtp"]).optional(),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.string().optional(),
@@ -34,7 +38,10 @@ export type EnvValidationResult =
   | { ok: true; environment: ReturnType<typeof resolveAppEnvironment> }
   | { ok: false; errors: string[] };
 
-function productionErrors(env: z.infer<typeof baseSchema>): string[] {
+function productionErrors(
+  env: z.infer<typeof baseSchema>,
+  source: Record<string, string | undefined>,
+): string[] {
   const errors: string[] = [];
   if (!env.DATABASE_URL) errors.push("DATABASE_URL is required in production");
   if (!env.APP_URL) errors.push("APP_URL is required in production (HTTPS origin)");
@@ -50,15 +57,34 @@ function productionErrors(env: z.infer<typeof baseSchema>): string[] {
   }
   if (env.EMAIL_CAPTURE === "true") errors.push("EMAIL_CAPTURE=true is forbidden in production");
   if (env.AUTH_DEV_LOG_OTP === "true") errors.push("AUTH_DEV_LOG_OTP=true is forbidden in production");
-  if (env.EMAIL_PROVIDER === "memory" || env.EMAIL_PROVIDER === "console") {
-    errors.push(`EMAIL_PROVIDER=${env.EMAIL_PROVIDER} is forbidden in production; use smtp`);
-  }
-  if (env.EMAIL_PROVIDER === "smtp") {
-    if (!env.SMTP_HOST) errors.push("SMTP_HOST is required when EMAIL_PROVIDER=smtp");
-    if (!env.SMTP_FROM && !env.EMAIL_FROM) {
-      errors.push("SMTP_FROM or EMAIL_FROM is required when EMAIL_PROVIDER=smtp");
+
+  const authProvider = resolveAuthProvider(source);
+  if (authProvider === "clerk" || env.AUTH_PROVIDER === "clerk") {
+    if (!env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+      errors.push("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required when AUTH_PROVIDER=clerk");
+    }
+    if (!env.CLERK_SECRET_KEY) {
+      errors.push("CLERK_SECRET_KEY is required when AUTH_PROVIDER=clerk");
+    }
+    // Authentication emails are delivered by Clerk — SMTP is not required for auth.
+    if (env.EMAIL_PROVIDER === "smtp") {
+      if (!env.SMTP_HOST) errors.push("SMTP_HOST is required when EMAIL_PROVIDER=smtp");
+      if (!env.SMTP_FROM && !env.EMAIL_FROM) {
+        errors.push("SMTP_FROM or EMAIL_FROM is required when EMAIL_PROVIDER=smtp");
+      }
+    }
+  } else {
+    if (env.EMAIL_PROVIDER === "memory" || env.EMAIL_PROVIDER === "console") {
+      errors.push(`EMAIL_PROVIDER=${env.EMAIL_PROVIDER} is forbidden in production; use smtp`);
+    }
+    if (env.EMAIL_PROVIDER === "smtp") {
+      if (!env.SMTP_HOST) errors.push("SMTP_HOST is required when EMAIL_PROVIDER=smtp");
+      if (!env.SMTP_FROM && !env.EMAIL_FROM) {
+        errors.push("SMTP_FROM or EMAIL_FROM is required when EMAIL_PROVIDER=smtp");
+      }
     }
   }
+
   const storage = env.OBJECT_STORAGE_PROVIDER ?? (env.S3_BUCKET ? "s3" : "local");
   if (storage === "local") {
     errors.push("OBJECT_STORAGE_PROVIDER=local is forbidden in production; use s3");
@@ -83,7 +109,16 @@ export function validateEnvironment(
   }
   const environment = resolveAppEnvironment(source);
   if (isProductionRuntime(source)) {
-    const errors = productionErrors(parsed.data);
+    const errors = productionErrors(parsed.data, source);
+    if (errors.length) return { ok: false, errors };
+  } else if (source.AUTH_PROVIDER === "clerk") {
+    const errors: string[] = [];
+    if (!parsed.data.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+      errors.push("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required when AUTH_PROVIDER=clerk");
+    }
+    if (!parsed.data.CLERK_SECRET_KEY) {
+      errors.push("CLERK_SECRET_KEY is required when AUTH_PROVIDER=clerk");
+    }
     if (errors.length) return { ok: false, errors };
   }
   if (isE2ERuntime(source) && isStrictProduction(source)) {

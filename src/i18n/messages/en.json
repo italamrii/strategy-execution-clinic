@@ -196,6 +196,7 @@
     "saved": "Saved.",
     "saveFailed": "Could not save.",
     "sessions": "Active sessions",
+    "sessionsClerkNote": "Sessions are managed by Clerk. Legacy local session rows are not shown as active sign-ins.",
     "currentSession": "Current session",
     "otherSession": "Other session",
     "logout": "Sign out",

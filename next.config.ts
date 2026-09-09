@@ -6,8 +6,15 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const isDev = process.env.NODE_ENV !== "production";
 const isProdDeploy = process.env.APP_ENV === "production" || process.env.APP_ENV === "staging";
 const scriptSrc = isDev
-  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-  : "script-src 'self' 'unsafe-inline'";
+  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com"
+  : "script-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com";
+
+// Minimum Clerk origins from official CSP guidance:
+// https://clerk.com/docs/guides/secure/best-practices/csp-headers
+const clerkConnect =
+  "https://*.clerk.accounts.dev https://*.clerk.com https://clerk-telemetry.com https://*.clerk-telemetry.com https://*.protect.clerk.com:*";
+const clerkImg = "https://img.clerk.com";
+const clerkFrame = "https://challenges.cloudflare.com https://*.protect.clerk.com";
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -20,7 +27,19 @@ const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "off" },
   {
     key: "Content-Security-Policy",
-    value: `default-src 'self'; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; ${scriptSrc}; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`,
+    value: [
+      "default-src 'self'",
+      "img-src 'self' data: blob: " + clerkImg,
+      "font-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      scriptSrc,
+      `connect-src 'self' ${clerkConnect}`,
+      "worker-src 'self' blob:",
+      `frame-src 'self' ${clerkFrame}`,
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join("; "),
   },
   ...(isProdDeploy
     ? [

@@ -1,3 +1,4 @@
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link, redirect } from "@/i18n/navigation";
 import { requireLocale } from "@/i18n/locale";
@@ -6,6 +7,8 @@ import {
   listSessionsForUser,
 } from "@/modules/identity";
 import { SecurityControls } from "@/modules/identity/ui/security-controls";
+import { LegacySecurityControls } from "@/modules/identity/ui/legacy-security-controls";
+import { isClerkAuthProvider } from "@/shared/config/auth-provider";
 
 export default async function AccountSecurityPage({
   params,
@@ -15,12 +18,58 @@ export default async function AccountSecurityPage({
   const { locale: localeParam } = await params;
   const locale = requireLocale(localeParam);
   setRequestLocale(locale);
-  const auth = await getOptionalAuthContext();
-  if (!auth) {
+  const authCtx = await getOptionalAuthContext();
+  if (!authCtx) {
     redirect({ href: "/login", locale });
   }
-  const sessions = await listSessionsForUser(auth!.userId);
   const t = await getTranslations("account");
+  const clerk = isClerkAuthProvider();
+
+  let sessions: {
+    id: string;
+    createdAt: string;
+    lastActiveAt: string;
+    current: boolean;
+  }[] = [];
+
+  if (clerk) {
+    const sessionAuth = await auth();
+    const currentSessionId = sessionAuth.sessionId;
+    if (sessionAuth.userId) {
+      try {
+        const client = await clerkClient();
+        const list = await client.sessions.getSessionList({
+          userId: sessionAuth.userId,
+          status: "active",
+        });
+        sessions = list.data.map((session) => ({
+          id: session.id,
+          createdAt: new Date(session.createdAt).toISOString(),
+          lastActiveAt: new Date(session.lastActiveAt).toISOString(),
+          current: session.id === currentSessionId,
+        }));
+      } catch {
+        sessions = currentSessionId
+          ? [
+              {
+                id: currentSessionId,
+                createdAt: new Date().toISOString(),
+                lastActiveAt: new Date().toISOString(),
+                current: true,
+              },
+            ]
+          : [];
+      }
+    }
+  } else {
+    const rows = await listSessionsForUser(authCtx!.userId);
+    sessions = rows.map((session) => ({
+      id: session.id,
+      createdAt: session.createdAt.toISOString(),
+      lastActiveAt: session.lastActiveAt.toISOString(),
+      current: session.id === authCtx!.sessionId,
+    }));
+  }
 
   return (
     <main id="main" className="mx-auto max-w-6xl px-6 py-16">
@@ -37,14 +86,11 @@ export default async function AccountSecurityPage({
         </Link>
       </nav>
       <div className="mt-10">
-        <SecurityControls
-          sessions={sessions.map((session) => ({
-            id: session.id,
-            createdAt: session.createdAt.toISOString(),
-            lastActiveAt: session.lastActiveAt.toISOString(),
-            current: session.id === auth!.sessionId,
-          }))}
-        />
+        {clerk ? (
+          <SecurityControls sessions={sessions} />
+        ) : (
+          <LegacySecurityControls sessions={sessions} />
+        )}
       </div>
     </main>
   );

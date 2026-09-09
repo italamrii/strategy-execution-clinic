@@ -9,6 +9,7 @@ describe("environment validation", () => {
       DATABASE_URL: "postgres://clinic:clinic@127.0.0.1:5432/clinic",
       AUTH_SECRET: "local-dev-secret-32-characters-min",
       EMAIL_PROVIDER: "console",
+      AUTH_PROVIDER: "legacy",
     });
     expect(result.ok).toBe(true);
   });
@@ -20,9 +21,9 @@ describe("environment validation", () => {
       DATABASE_URL: "postgres://u:p@db.example.com/clinic",
       AUTH_SECRET: "production-secret-32-characters-minimum",
       APP_URL: "https://clinic.example.com",
-      EMAIL_PROVIDER: "smtp",
-      SMTP_HOST: "smtp.example.com",
-      SMTP_FROM: "noreply@clinic.example.com",
+      AUTH_PROVIDER: "clerk",
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_example",
+      CLERK_SECRET_KEY: "sk_test_example",
       OBJECT_STORAGE_PROVIDER: "s3",
       S3_BUCKET: "clinic-private",
       S3_ACCESS_KEY_ID: "key",
@@ -42,9 +43,9 @@ describe("environment validation", () => {
       DATABASE_URL: "postgres://u:p@db.example.com/clinic",
       AUTH_SECRET: "production-secret-32-characters-minimum",
       APP_URL: "http://clinic.example.com",
-      EMAIL_PROVIDER: "smtp",
-      SMTP_HOST: "smtp.example.com",
-      SMTP_FROM: "noreply@clinic.example.com",
+      AUTH_PROVIDER: "clerk",
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_example",
+      CLERK_SECRET_KEY: "sk_test_example",
       OBJECT_STORAGE_PROVIDER: "s3",
       S3_BUCKET: "clinic-private",
       S3_ACCESS_KEY_ID: "key",
@@ -53,19 +54,37 @@ describe("environment validation", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("rejects memory email provider in production", () => {
-    const result = validateEnvironment({
+  it("allows Clerk production without SMTP while rejecting memory provider only in legacy mode", () => {
+    const clerkOk = validateEnvironment({
       NODE_ENV: "production",
       APP_ENV: "production",
       DATABASE_URL: "postgres://u:p@db.example.com/clinic",
       AUTH_SECRET: "production-secret-32-characters-minimum",
       APP_URL: "https://clinic.example.com",
+      AUTH_PROVIDER: "clerk",
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_example",
+      CLERK_SECRET_KEY: "sk_test_example",
       EMAIL_PROVIDER: "memory",
       OBJECT_STORAGE_PROVIDER: "s3",
       S3_BUCKET: "clinic-private",
       S3_ACCESS_KEY_ID: "key",
       S3_SECRET_ACCESS_KEY: "secret",
     });
-    expect(result.ok).toBe(false);
+    expect(clerkOk.ok).toBe(true);
+
+    const legacyMemory = validateEnvironment({
+      NODE_ENV: "production",
+      APP_ENV: "production",
+      DATABASE_URL: "postgres://u:p@db.example.com/clinic",
+      AUTH_SECRET: "production-secret-32-characters-minimum",
+      APP_URL: "https://clinic.example.com",
+      AUTH_PROVIDER: "legacy",
+      EMAIL_PROVIDER: "memory",
+      OBJECT_STORAGE_PROVIDER: "s3",
+      S3_BUCKET: "clinic-private",
+      S3_ACCESS_KEY_ID: "key",
+      S3_SECRET_ACCESS_KEY: "secret",
+    });
+    expect(legacyMemory.ok).toBe(false);
   });
 });

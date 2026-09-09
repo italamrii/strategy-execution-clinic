@@ -1,13 +1,12 @@
 "use client";
 
-import { useClerk } from "@clerk/nextjs";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { useTransition } from "react";
 import { Button } from "@/shared/ui/button";
 import { logoutAction, logoutAllAction } from "@/modules/identity/actions";
 
-export function SecurityControls({
+export function LegacySecurityControls({
   sessions,
 }: {
   sessions: {
@@ -19,14 +18,12 @@ export function SecurityControls({
 }) {
   const t = useTranslations("account");
   const router = useRouter();
-  const { signOut } = useClerk();
   const [pending, startTransition] = useTransition();
 
   return (
     <div className="grid max-w-2xl gap-8">
       <section>
         <h2 className="text-xl text-ink">{t("sessions")}</h2>
-        <p className="mt-2 text-sm text-muted">{t("sessionsClerkNote")}</p>
         <ul className="mt-4 divide-y divide-line border border-line bg-surface">
           {sessions.map((session) => (
             <li
@@ -51,7 +48,6 @@ export function SecurityControls({
           onClick={() => {
             startTransition(async () => {
               await logoutAction();
-              await signOut({ redirectUrl: undefined });
               router.replace("/login");
               router.refresh();
             });
@@ -66,7 +62,6 @@ export function SecurityControls({
           onClick={() => {
             startTransition(async () => {
               await logoutAllAction();
-              await signOut({ redirectUrl: undefined });
               router.replace("/login");
               router.refresh();
             });

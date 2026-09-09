@@ -1,5 +1,6 @@
 "use server";
 
+import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
 import { z } from "zod";
 import {
@@ -19,6 +20,11 @@ import {
   writeAudit,
 } from "./actions-deps";
 import type { Locale } from "@/i18n/routing";
+import { isClerkAuthProvider } from "@/shared/config/auth-provider";
+import {
+  ClerkMappingError,
+  syncClerkIdentityToLocalUser,
+} from "./auth/clerk-sync";
 
 const emailSchema = z.object({
   email: z.string().email().max(320),
@@ -43,10 +49,14 @@ export type ActionResult =
   | { ok: true; message?: string }
   | { ok: false; code: string };
 
+/** @deprecated Legacy OTP — retained for AUTH_PROVIDER=legacy and tests only. */
 export async function requestOtpAction(input: {
   email: string;
   locale: "ar" | "en";
 }): Promise<ActionResult> {
+  if (isClerkAuthProvider()) {
+    return { ok: false, code: "invalid_input" };
+  }
   const parsed = emailSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, code: "invalid_input" };
@@ -72,10 +82,14 @@ export async function requestOtpAction(input: {
   }
 }
 
+/** @deprecated Legacy OTP — retained for AUTH_PROVIDER=legacy and tests only. */
 export async function verifyOtpAction(input: {
   email: string;
   code: string;
 }): Promise<ActionResult> {
+  if (isClerkAuthProvider()) {
+    return { ok: false, code: "invalid_input" };
+  }
   const parsed = verifySchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, code: "invalid_input" };
@@ -99,8 +113,80 @@ export async function verifyOtpAction(input: {
   }
 }
 
+/**
+ * After Clerk client finalize(), sync the Clerk identity to the local user
+ * and write AUTH_LOGIN_SUCCESS. Does not log tokens or secrets.
+ */
+export async function completeClerkLoginAction(input: {
+  locale: "ar" | "en";
+}): Promise<ActionResult> {
+  if (!isClerkAuthProvider()) {
+    return { ok: false, code: "invalid_input" };
+  }
+  const meta = await requestMeta();
+  try {
+    const session = await auth();
+    if (!session.userId || !session.sessionId) {
+      return { ok: false, code: "invalid_otp" };
+    }
+    const clerkUser = await currentUser();
+    const email =
+      clerkUser?.primaryEmailAddress?.emailAddress ??
+      clerkUser?.emailAddresses?.[0]?.emailAddress;
+    if (!email) {
+      await writeAudit({
+        action: "AUTH_MAPPING_FAILED",
+        resourceType: "clerk_user",
+        resourceId: session.userId,
+        requestId: meta.requestId,
+        reason: "missing_email",
+      });
+      return { ok: false, code: "invalid_otp" };
+    }
+
+    await syncClerkIdentityToLocalUser(
+      {
+        clerkUserId: session.userId,
+        email,
+        locale: input.locale,
+      },
+      { requestId: meta.requestId, auditLogin: true, touchLogin: true },
+    );
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof ClerkMappingError) {
+      return { ok: false, code: error.code === "account_restricted" ? "account_restricted" : "invalid_otp" };
+    }
+    throw error;
+  }
+}
+
 export async function logoutAction(): Promise<ActionResult> {
   const ctx = await getOptionalAuthContext();
+  const meta = await requestMeta();
+
+  if (isClerkAuthProvider()) {
+    const session = await auth();
+    if (ctx) {
+      await writeAudit({
+        actorUserId: ctx.userId,
+        action: "AUTH_LOGOUT",
+        resourceType: "clerk_session",
+        resourceId: session.sessionId ?? ctx.sessionId,
+        requestId: ctx.requestId ?? meta.requestId,
+      });
+    }
+    if (session.sessionId) {
+      try {
+        const client = await clerkClient();
+        await client.sessions.revokeSession(session.sessionId);
+      } catch {
+        // Client-side signOut remains the fallback.
+      }
+    }
+    return { ok: true };
+  }
+
   if (ctx) {
     await revokeSession({
       sessionId: ctx.sessionId,
@@ -122,6 +208,34 @@ export async function logoutAction(): Promise<ActionResult> {
 
 export async function logoutAllAction(): Promise<ActionResult> {
   const ctx = await requireAuthenticatedUser();
+  const meta = await requestMeta();
+
+  if (isClerkAuthProvider()) {
+    const session = await auth();
+    if (session.userId) {
+      try {
+        const client = await clerkClient();
+        const list = await client.sessions.getSessionList({
+          userId: session.userId,
+          status: "active",
+        });
+        for (const item of list.data) {
+          await client.sessions.revokeSession(item.id);
+        }
+      } catch {
+        // Best effort; client signOut still clears local browser session.
+      }
+    }
+    await writeAudit({
+      actorUserId: ctx.userId,
+      action: "AUTH_LOGOUT_ALL",
+      resourceType: "clerk_user",
+      resourceId: session.userId ?? ctx.userId,
+      requestId: ctx.requestId ?? meta.requestId,
+    });
+    return { ok: true };
+  }
+
   await revokeAllSessionsForUser({
     userId: ctx.userId,
     actorUserId: ctx.userId,
@@ -156,6 +270,18 @@ export async function updateLocaleAction(locale: Locale): Promise<ActionResult> 
 
 export async function getSessionsAction() {
   const ctx = await requireAuthenticatedUser();
+  if (isClerkAuthProvider()) {
+    const session = await auth();
+    return [
+      {
+        id: session.sessionId ?? ctx.sessionId,
+        createdAt: new Date().toISOString(),
+        lastActiveAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        current: true,
+      },
+    ];
+  }
   const rows = await listSessionsForUser(ctx.userId);
   return rows.map((row) => ({
     id: row.id,

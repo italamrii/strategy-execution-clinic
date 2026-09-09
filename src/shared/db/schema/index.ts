@@ -22,13 +22,17 @@ export const users = pgTable("users", {
   id: uuid("id").primaryKey(),
   email: text("email").notNull(),
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+  clerkUserId: text("clerk_user_id"),
   locale: text("locale").notNull().default("ar"),
   status: text("status").notNull().default("active"),
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
   suspendedAt: timestamp("suspended_at", { withTimezone: true }),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   ...timestamps,
-}, (t) => [uniqueIndex("users_email_unique").on(t.email)]);
+}, (t) => [
+  uniqueIndex("users_email_unique").on(t.email),
+  uniqueIndex("users_clerk_user_id_unique").on(t.clerkUserId),
+]);
 
 export const authOtpChallenges = pgTable("auth_otp_challenges", {
   id: uuid("id").primaryKey(),

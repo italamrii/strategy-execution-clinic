@@ -8,9 +8,23 @@
 | Worker | `pnpm process-notifications` (cron or separate service) |
 | Database | Managed PostgreSQL (TLS) |
 | Object storage | S3-compatible (R2, S3, MinIO) |
-| Email | SMTP transactional provider |
+| Email (auth OTP) | Clerk (when `AUTH_PROVIDER=clerk`) |
+| Email (notifications) | Optional SMTP transactional provider |
 
 No Kubernetes. No microservices.
+
+## Railway + Clerk
+
+1. In Railway, set:
+   - `AUTH_PROVIDER=clerk`
+   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (public)
+   - `CLERK_SECRET_KEY` (secret — never expose to the client or logs)
+2. In the Clerk Dashboard:
+   - Enable email verification code for sign-in and sign-up
+   - Add the Railway public HTTPS URL to allowed origins / redirect URLs
+   - Prefer Clerk-delivered email (do not point auth mail at a personal SMTP inbox)
+3. Deploy: Docker startup already runs `scripts/db-migrate.ts` before Next.js (adds `users.clerk_user_id`).
+4. Smoke: `/api/health`, `/ar/login`, `/en/login`, new-user OTP, existing-user OTP, logout.
 
 ## Build
 

@@ -11,6 +11,12 @@ export {
 export type { Actor } from "@/shared/security/authorization";
 
 export { requestLoginOtp, verifyLoginOtp, AuthError } from "./auth/service";
+export {
+  syncClerkIdentityToLocalUser,
+  planClerkUserMapping,
+  ClerkMappingError,
+} from "./auth/clerk-sync";
+export type { ClerkIdentity, LocalUserRecord, MappingPlan } from "./auth/clerk-sync";
 export { bootstrapSuperAdmin } from "./bootstrap";
 export {
   getPrivateAccount,
