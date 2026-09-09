@@ -13,9 +13,15 @@ function withRequestId(response: NextResponse, request: NextRequest): NextRespon
 }
 
 function applyI18n(request: NextRequest): NextResponse {
-  // next-intl must not rewrite API or Clerk proxy paths.
+  // next-intl must not rewrite API, Clerk proxy, or well-known root files.
   const pathname = request.nextUrl.pathname;
-  if (pathname.startsWith("/api") || pathname.startsWith("/__clerk")) {
+  if (
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/__clerk") ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    pathname === "/favicon.ico"
+  ) {
     return withRequestId(NextResponse.next(), request);
   }
   return withRequestId(handleI18n(request), request);

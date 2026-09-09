@@ -42,6 +42,9 @@ export default async function AccountPage({
         <Link href="/account/volunteer" className="text-graphite hover:text-navy">
           {t("volunteer")}
         </Link>
+        <Link href="/account/tracks" className="text-graphite hover:text-navy">
+          {t("tracks")}
+        </Link>
         <Link href="/account/contributions" className="text-graphite hover:text-navy">
           {t("contributions")}
         </Link>

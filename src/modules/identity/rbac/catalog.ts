@@ -97,6 +97,29 @@ export const PERMISSIONS = [
   "audit.read",
   "flag.write",
   "report.read",
+  "track.read",
+  "track.manage",
+  "track.application.create",
+  "track.application.read.own",
+  "track.application.withdraw.own",
+  "track.application.read.any",
+  "track.application.review",
+  "track.application.approve",
+  "track.application.reject",
+  "track.membership.read.own",
+  "track.membership.read.scoped",
+  "track.membership.assign",
+  "track.leadership.manage",
+  "track.contribution.create.own",
+  "track.contribution.read.own",
+  "track.contribution.read.scoped",
+  "track.contribution.review",
+  "track.contribution.approve",
+  "track.initiative.manage",
+  "track.task.manage",
+  "track.event.manage",
+  "track.analytics.read",
+  "track.announcement.manage",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -219,6 +242,54 @@ const MEMBER_RECOGNITION_PERMS = [
   "notification.manage.own",
 ] as const satisfies readonly Permission[];
 
+const TRACK_ADMIN_PERMS = [
+  "track.read",
+  "track.manage",
+  "track.application.read.any",
+  "track.application.review",
+  "track.application.approve",
+  "track.application.reject",
+  "track.membership.read.scoped",
+  "track.membership.assign",
+  "track.leadership.manage",
+  "track.contribution.read.scoped",
+  "track.contribution.review",
+  "track.contribution.approve",
+  "track.initiative.manage",
+  "track.task.manage",
+  "track.event.manage",
+  "track.analytics.read",
+  "track.announcement.manage",
+] as const satisfies readonly Permission[];
+
+const TRACK_LEADER_PERMS = [
+  "track.read",
+  "track.application.read.any",
+  "track.application.review",
+  "track.application.approve",
+  "track.application.reject",
+  "track.membership.read.scoped",
+  "track.contribution.read.scoped",
+  "track.contribution.review",
+  "track.contribution.approve",
+  "track.initiative.manage",
+  "track.task.manage",
+  "track.event.manage",
+  "track.analytics.read",
+  "track.announcement.manage",
+  "volunteer.hours.review",
+] as const satisfies readonly Permission[];
+
+const MEMBER_TRACK_PERMS = [
+  "track.read",
+  "track.application.create",
+  "track.application.read.own",
+  "track.application.withdraw.own",
+  "track.membership.read.own",
+  "track.contribution.create.own",
+  "track.contribution.read.own",
+] as const satisfies readonly Permission[];
+
 const OPS_ADMIN_PERMS = [
   "admin.dashboard.read",
   "analytics.read",
@@ -251,10 +322,12 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     "credential.revoke",
     ...VOLUNTEER_ADMIN_PERMS,
     ...RECOGNITION_ADMIN_PERMS,
+    ...TRACK_ADMIN_PERMS,
     ...OPS_ADMIN_PERMS,
   ],
   membership_admin: [
     ...MEMBERSHIP_ADMIN_PERMS,
+    ...TRACK_ADMIN_PERMS,
     "credential.read.any",
     "credential.issue",
     "credential.suspend",
@@ -268,8 +341,7 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
   track_lead: [
     "membership.type.read",
     "membership.track.read",
-    "volunteer.hours.review",
-    "volunteer.application.review",
+    ...TRACK_LEADER_PERMS,
   ],
   volunteer_leader: VOLUNTEER_LEADER_PERMS,
   reviewer: [
@@ -285,6 +357,8 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     "contribution.review",
     "contribution.approve",
     "contribution.reject",
+    "track.contribution.read.scoped",
+    "track.contribution.review",
   ],
   content_manager: ["content.write", "content.read", "announcement.manage"],
   partner_manager: ["partner.write"],
@@ -300,6 +374,8 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     "badge.read.any",
     "certificate.read.any",
     "impact.read.any",
+    "track.read",
+    "track.analytics.read",
   ],
   member: [
     "membership.type.read",
@@ -312,5 +388,6 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     "credential.asset.generate",
     ...MEMBER_VOLUNTEER_PERMS,
     ...MEMBER_RECOGNITION_PERMS,
+    ...MEMBER_TRACK_PERMS,
   ],
 };

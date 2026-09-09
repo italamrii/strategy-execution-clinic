@@ -188,9 +188,20 @@ export const tracks = pgTable("tracks", {
   nameEn: text("name_en").notNull(),
   descriptionAr: text("description_ar"),
   descriptionEn: text("description_en"),
+  purposeAr: text("purpose_ar"),
+  purposeEn: text("purpose_en"),
+  scopeAr: text("scope_ar"),
+  scopeEn: text("scope_en"),
+  iconKey: text("icon_key").notNull().default("track"),
+  status: text("status").notNull().default("active"),
   isEnabled: boolean("is_enabled").notNull().default(true),
+  applicationsOpen: boolean("applications_open").notNull().default(true),
+  allowSecondary: boolean("allow_secondary").notNull().default(true),
+  maxSecondary: integer("max_secondary").notNull().default(2),
   sortOrder: integer("sort_order").notNull().default(0),
   cardAccent: jsonb("card_accent"),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
   ...timestamps,
 }, (t) => [
   uniqueIndex("tracks_code_unique").on(t.code),
@@ -846,3 +857,147 @@ export const consentRecords = pgTable("consent_records", {
   granted: boolean("granted").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Operational track community membership (separate from membership-category member_tracks). */
+export const trackMemberships = pgTable("track_memberships", {
+  id: uuid("id").primaryKey(),
+  trackId: uuid("track_id").notNull().references(() => tracks.id),
+  userId: uuid("user_id").notNull().references(() => users.id),
+  membershipId: uuid("membership_id").references(() => memberships.id),
+  role: text("role").notNull().default("member"),
+  isPrimary: boolean("is_primary").notNull().default(false),
+  status: text("status").notNull().default("active"),
+  joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+  leftAt: timestamp("left_at", { withTimezone: true }),
+  source: text("source").notNull().default("application"),
+  assignedBy: uuid("assigned_by").references(() => users.id),
+  ...timestamps,
+}, (t) => [
+  uniqueIndex("track_memberships_track_user_unique").on(t.trackId, t.userId),
+  index("track_memberships_user_status_idx").on(t.userId, t.status),
+  index("track_memberships_track_status_idx").on(t.trackId, t.status),
+  uniqueIndex("track_memberships_one_primary_per_user")
+    .on(t.userId)
+    .where(sql`${t.isPrimary} = true AND ${t.status} = 'active'`),
+]);
+
+export const trackLeadershipAssignments = pgTable("track_leadership_assignments", {
+  id: uuid("id").primaryKey(),
+  trackId: uuid("track_id").notNull().references(() => tracks.id),
+  userId: uuid("user_id").notNull().references(() => users.id),
+  leadershipRole: text("leadership_role").notNull(),
+  status: text("status").notNull().default("active"),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  appointedBy: uuid("appointed_by").references(() => users.id),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  revokeReason: text("revoke_reason"),
+  ...timestamps,
+}, (t) => [
+  index("track_leadership_track_status_idx").on(t.trackId, t.status),
+  index("track_leadership_user_idx").on(t.userId),
+  uniqueIndex("track_leadership_one_active_primary")
+    .on(t.trackId)
+    .where(sql`${t.leadershipRole} = 'primary' AND ${t.status} = 'active'`),
+]);
+
+export const trackApplications = pgTable("track_applications", {
+  id: uuid("id").primaryKey(),
+  trackId: uuid("track_id").notNull().references(() => tracks.id),
+  userId: uuid("user_id").notNull().references(() => users.id),
+  requestedRole: text("requested_role").notNull().default("member"),
+  wantPrimary: boolean("want_primary").notNull().default(false),
+  motivation: text("motivation"),
+  status: text("status").notNull().default("submitted"),
+  reviewerId: uuid("reviewer_id").references(() => users.id),
+  decisionReason: text("decision_reason"),
+  submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
+  ...timestamps,
+}, (t) => [
+  index("track_applications_track_status_idx").on(t.trackId, t.status),
+  index("track_applications_user_status_idx").on(t.userId, t.status),
+]);
+
+export const trackContributions = pgTable("track_contributions", {
+  id: uuid("id").primaryKey(),
+  trackId: uuid("track_id").notNull().references(() => tracks.id),
+  userId: uuid("user_id").notNull().references(() => users.id),
+  contributionType: text("contribution_type").notNull(),
+  recognitionContributionId: uuid("recognition_contribution_id").references(() => contributions.id),
+  titleAr: text("title_ar").notNull(),
+  titleEn: text("title_en").notNull(),
+  summaryAr: text("summary_ar"),
+  summaryEn: text("summary_en"),
+  status: text("status").notNull().default("draft"),
+  hoursClaimed: numeric("hours_claimed", { precision: 8, scale: 2 }),
+  hoursAwarded: numeric("hours_awarded", { precision: 8, scale: 2 }),
+  impactAwarded: boolean("impact_awarded").notNull().default(false),
+  badgeAwarded: boolean("badge_awarded").notNull().default(false),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  ...timestamps,
+}, (t) => [
+  index("track_contributions_track_status_idx").on(t.trackId, t.status),
+  index("track_contributions_user_status_idx").on(t.userId, t.status),
+]);
+
+export const trackContributionReviews = pgTable("track_contribution_reviews", {
+  id: uuid("id").primaryKey(),
+  contributionId: uuid("contribution_id").notNull().references(() => trackContributions.id),
+  actorUserId: uuid("actor_user_id").notNull().references(() => users.id),
+  action: text("action").notNull(),
+  fromStatus: text("from_status").notNull(),
+  toStatus: text("to_status").notNull(),
+  reason: text("reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("track_contribution_reviews_contribution_idx").on(t.contributionId)]);
+
+export const trackInitiatives = pgTable("track_initiatives", {
+  id: uuid("id").primaryKey(),
+  trackId: uuid("track_id").notNull().references(() => tracks.id),
+  ownerUserId: uuid("owner_user_id").references(() => users.id),
+  titleAr: text("title_ar").notNull(),
+  titleEn: text("title_en").notNull(),
+  summaryAr: text("summary_ar"),
+  summaryEn: text("summary_en"),
+  status: text("status").notNull().default("active"),
+  startsAt: timestamp("starts_at", { withTimezone: true }),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  ...timestamps,
+}, (t) => [index("track_initiatives_track_status_idx").on(t.trackId, t.status)]);
+
+export const trackTasks = pgTable("track_tasks", {
+  id: uuid("id").primaryKey(),
+  trackId: uuid("track_id").notNull().references(() => tracks.id),
+  initiativeId: uuid("initiative_id").references(() => trackInitiatives.id),
+  assigneeUserId: uuid("assignee_user_id").references(() => users.id),
+  titleAr: text("title_ar").notNull(),
+  titleEn: text("title_en").notNull(),
+  descriptionAr: text("description_ar"),
+  descriptionEn: text("description_en"),
+  status: text("status").notNull().default("open"),
+  dueAt: timestamp("due_at", { withTimezone: true }),
+  createdBy: uuid("created_by").references(() => users.id),
+  ...timestamps,
+}, (t) => [
+  index("track_tasks_track_status_idx").on(t.trackId, t.status),
+  index("track_tasks_assignee_idx").on(t.assigneeUserId),
+]);
+
+export const trackEvents = pgTable("track_events", {
+  id: uuid("id").primaryKey(),
+  trackId: uuid("track_id").notNull().references(() => tracks.id),
+  titleAr: text("title_ar").notNull(),
+  titleEn: text("title_en").notNull(),
+  summaryAr: text("summary_ar"),
+  summaryEn: text("summary_en"),
+  eventKind: text("event_kind").notNull().default("workshop"),
+  status: text("status").notNull().default("scheduled"),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  location: text("location"),
+  capacity: integer("capacity"),
+  createdBy: uuid("created_by").references(() => users.id),
+  ...timestamps,
+}, (t) => [index("track_events_track_starts_idx").on(t.trackId, t.startsAt)]);

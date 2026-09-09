@@ -33,7 +33,13 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <section className="institutional-section institutional-section--white" id="tracks">
         <div className="site-container">
           <SectionHeader index="02" title={t("home.tracksTitle")} body={t("home.tracksBodyNew")} />
-          <EditorialGrid>{tracks.map((track, index) => <TrackItem key={track.slug} index={index} title={isAr ? track.nameAr : track.nameEn} description={trackDescriptions[index]} />)}</EditorialGrid>
+          <EditorialGrid>{tracks.map((track, index) => <TrackItem key={track.slug} index={index} title={isAr ? track.nameAr : track.nameEn} description={trackDescriptions[index]} href={`/tracks/${track.slug}`} />)}</EditorialGrid>
+          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            {(t.raw("home.trackBenefits") as string[]).map((benefit) => (
+              <p key={benefit} className="border border-line bg-surface px-4 py-3 text-sm text-graphite">{benefit}</p>
+            ))}
+          </div>
+          <Link className="mt-8 inline-flex text-action" href="/tracks">{t("home.exploreTracks")}<span aria-hidden>←</span></Link>
         </div>
       </section>
       <section className="institutional-section">

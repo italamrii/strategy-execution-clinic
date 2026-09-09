@@ -1108,19 +1108,32 @@ export async function listDirectoryMembers(input: {
           where: inArray(credentials.membershipId, membershipIds),
         });
   const credByMembership = new Map(creds.map((c) => [c.membershipId, c]));
-  const results = rows.map((p) => {
-    const membership = membershipByUser.get(p.userId);
-    const publicCode = membership
-      ? (credByMembership.get(membership.id)?.publicCode ?? null)
-      : null;
-    return {
-      displayNameAr: p.displayNameAr,
-      displayNameEn: p.displayNameEn,
-      headlineAr: p.headlineAr,
-      headlineEn: p.headlineEn,
-      publicCode,
-    };
-  });
+  const results = await Promise.all(
+    rows.map(async (p) => {
+      const membership = membershipByUser.get(p.userId);
+      const publicCode = membership
+        ? (credByMembership.get(membership.id)?.publicCode ?? null)
+        : null;
+      const { getVerifiedTrackIdentity } = await import("@/modules/tracks");
+      const identity = await getVerifiedTrackIdentity(p.userId);
+      return {
+        displayNameAr: p.displayNameAr,
+        displayNameEn: p.displayNameEn,
+        headlineAr: p.headlineAr,
+        headlineEn: p.headlineEn,
+        publicCode,
+        primaryTrack: identity.primaryTrack
+          ? {
+              slug: identity.primaryTrack.slug,
+              nameAr: identity.primaryTrack.nameAr,
+              nameEn: identity.primaryTrack.nameEn,
+              iconKey: identity.primaryTrack.iconKey,
+            }
+          : null,
+        isGroupLeader: identity.isGroupLeader,
+      };
+    }),
+  );
   return { items: results, page, pageSize };
 }
 

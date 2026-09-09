@@ -342,7 +342,14 @@ export type OwnCredentialDto = {
   membershipTypeSlug: string;
   membershipTypeAr: string;
   membershipTypeEn: string;
-  tracks: Array<{ nameAr: string; nameEn: string; slug: string }>;
+  tracks: Array<{ nameAr: string; nameEn: string; slug: string; iconKey?: string }>;
+  primaryTrack: {
+    slug: string;
+    nameAr: string;
+    nameEn: string;
+    iconKey: string;
+  } | null;
+  isGroupLeader: boolean;
   issuedAt: string;
   expiresAt: string | null;
   memberNameAr: string;
@@ -407,6 +414,28 @@ export async function listOwnCredentials(actorUserId: string): Promise<OwnCreden
       expiresAt: credential.expiresAt,
     });
     const { buildVerificationUrl } = await import("./qr");
+    const { getVerifiedTrackIdentity } = await import("@/modules/tracks");
+    const identity = await getVerifiedTrackIdentity(actorUserId);
+    const operational = [
+      ...(identity.primaryTrack
+        ? [
+            {
+              nameAr: identity.primaryTrack.nameAr,
+              nameEn: identity.primaryTrack.nameEn,
+              slug: identity.primaryTrack.slug,
+              iconKey: identity.primaryTrack.iconKey,
+            },
+          ]
+        : []),
+      ...identity.secondaryTracks
+        .filter((t): t is NonNullable<typeof t> => Boolean(t))
+        .map((t) => ({
+          nameAr: t.nameAr,
+          nameEn: t.nameEn,
+          slug: t.slug,
+          iconKey: t.iconKey,
+        })),
+    ];
     out.push({
       id: credential.id,
       publicCode: credential.publicCode,
@@ -415,11 +444,24 @@ export async function listOwnCredentials(actorUserId: string): Promise<OwnCreden
       membershipTypeSlug: ctx.type?.slug ?? "professional_member",
       membershipTypeAr: ctx.type?.nameAr ?? "",
       membershipTypeEn: ctx.type?.nameEn ?? "",
-      tracks: ctx.trackRows.map((t) => ({
-        nameAr: t.nameAr,
-        nameEn: t.nameEn,
-        slug: t.slug,
-      })),
+      tracks:
+        operational.length > 0
+          ? operational
+          : ctx.trackRows.map((t) => ({
+              nameAr: t.nameAr,
+              nameEn: t.nameEn,
+              slug: t.slug,
+              iconKey: t.iconKey,
+            })),
+      primaryTrack: identity.primaryTrack
+        ? {
+            slug: identity.primaryTrack.slug,
+            nameAr: identity.primaryTrack.nameAr,
+            nameEn: identity.primaryTrack.nameEn,
+            iconKey: identity.primaryTrack.iconKey,
+          }
+        : null,
+      isGroupLeader: identity.isGroupLeader,
       issuedAt: credential.issuedAt.toISOString(),
       expiresAt: credential.expiresAt?.toISOString() ?? null,
       memberNameAr: ctx.profile?.displayNameAr ?? "",
@@ -508,6 +550,57 @@ export async function verifyPublicCode(input: {
   });
 
   const approvedVolunteerHours = await getApprovedHoursForUser(membership.userId);
+  const { getVerifiedTrackIdentity } = await import("@/modules/tracks");
+  const trackIdentity = await getVerifiedTrackIdentity(membership.userId);
+  const primaryTrack = trackIdentity.primaryTrack
+    ? {
+        slug: trackIdentity.primaryTrack.slug,
+        nameAr: trackIdentity.primaryTrack.nameAr,
+        nameEn: trackIdentity.primaryTrack.nameEn,
+        iconKey: trackIdentity.primaryTrack.iconKey,
+        role: "primary" as const,
+      }
+    : null;
+  const operationalTracks = [
+    ...(trackIdentity.primaryTrack
+      ? [
+          {
+            nameAr: trackIdentity.primaryTrack.nameAr,
+            nameEn: trackIdentity.primaryTrack.nameEn,
+            slug: trackIdentity.primaryTrack.slug,
+            iconKey: trackIdentity.primaryTrack.iconKey,
+          },
+        ]
+      : []),
+    ...trackIdentity.secondaryTracks
+      .filter((t): t is NonNullable<typeof t> => Boolean(t))
+      .map((t) => ({
+        nameAr: t.nameAr,
+        nameEn: t.nameEn,
+        slug: t.slug,
+        iconKey: t.iconKey,
+      })),
+  ];
+  const catalogTracks = trackRows.map((t) => ({
+    nameAr: t.nameAr,
+    nameEn: t.nameEn,
+    slug: t.slug,
+    iconKey: t.iconKey,
+  }));
+  const trackBadges = [
+    ...(primaryTrack
+      ? [
+          {
+            nameAr: primaryTrack.nameAr,
+            nameEn: primaryTrack.nameEn,
+            slug: "track_primary_member",
+          },
+        ]
+      : []),
+    ...(trackIdentity.isGroupLeader
+      ? [{ nameAr: "قائد المسار", nameEn: "Group Leader", slug: "track_group_leader" }]
+      : []),
+  ];
 
   const source: VerificationSource = {
     publicCode: credential.publicCode,
@@ -516,12 +609,14 @@ export async function verifyPublicCode(input: {
     displayNameEn: profile?.displayNameEn ?? null,
     membershipTypeNameAr: type?.nameAr ?? "",
     membershipTypeNameEn: type?.nameEn ?? "",
-    tracks: trackRows.map((t) => ({ nameAr: t.nameAr, nameEn: t.nameEn })),
+    tracks: operationalTracks.length > 0 ? operationalTracks : catalogTracks,
+    primaryTrack,
+    isGroupLeader: trackIdentity.isGroupLeader,
     memberSinceYear: credential.issuedAt.getFullYear(),
     issuedAt: credential.issuedAt.toISOString(),
     approvedVolunteerHours: approvedVolunteerHours > 0 ? approvedVolunteerHours : null,
     hoursPublic: profile?.hoursPublic ?? false,
-    badges: [],
+    badges: trackBadges,
     photoUrl: profile?.visibility === "public" ? null : null,
     email: profile?.displayNameAr,
     phone: undefined,

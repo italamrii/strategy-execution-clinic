@@ -11,14 +11,14 @@ export const MEMBERSHIP_TYPE_SEED = [
 ] as const;
 
 export const TRACK_SEED = [
-  { code: "01", slug: "strategy", nameAr: "الاستراتيجية", nameEn: "Strategy" },
-  { code: "02", slug: "execution", nameAr: "التنفيذ", nameEn: "Execution" },
-  { code: "03", slug: "performance", nameAr: "الأداء", nameEn: "Performance" },
-  { code: "04", slug: "institutional-excellence", nameAr: "التميز المؤسسي", nameEn: "Institutional Excellence" },
-  { code: "05", slug: "institutional-transformation", nameAr: "التحول المؤسسي", nameEn: "Institutional Transformation" },
-  { code: "06", slug: "grc", nameAr: "الحوكمة والمخاطر والالتزام", nameEn: "Governance, Risk & Compliance" },
-  { code: "07", slug: "human-capital", nameAr: "رأس المال البشري", nameEn: "Human Capital" },
-  { code: "08", slug: "ai-automation", nameAr: "الذكاء الاصطناعي والأتمتة", nameEn: "AI & Automation" },
+  { code: "01", slug: "strategy", nameAr: "المسار الاستراتيجي", nameEn: "Strategic Path" },
+  { code: "02", slug: "execution", nameAr: "مسار التنفيذ", nameEn: "Execution Path" },
+  { code: "03", slug: "performance", nameAr: "مسار الأداء", nameEn: "Performance Path" },
+  { code: "04", slug: "institutional-excellence", nameAr: "مسار التميز المؤسسي", nameEn: "Institutional Excellence Path" },
+  { code: "05", slug: "institutional-transformation", nameAr: "مسار التحول المؤسسي", nameEn: "Institutional Transformation Path" },
+  { code: "06", slug: "grc", nameAr: "مسار الحوكمة والمخاطر", nameEn: "Governance, Risk & Compliance Path" },
+  { code: "07", slug: "human-capital", nameAr: "مسار رأس المال البشري", nameEn: "Human Capital Path" },
+  { code: "08", slug: "ai-automation", nameAr: "مسار الذكاء الاصطناعي والأتمتة", nameEn: "AI & Automation Path" },
 ] as const;
 
 export function getPublicMembershipTypes() { return MEMBERSHIP_TYPE_SEED; }

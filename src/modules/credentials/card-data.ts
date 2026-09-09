@@ -12,7 +12,9 @@ export async function buildCardRenderInput(
   const ctx = await hydrateCredentialContext(credentialId);
   const verificationUrl = buildVerificationUrl(ctx.credential.publicCode, locale);
   const qrSvg = await generateQrSvg(verificationUrl);
-  const primary = ctx.trackRows[0];
+  const { getVerifiedTrackIdentity } = await import("@/modules/tracks");
+  const identity = await getVerifiedTrackIdentity(ctx.membership.userId);
+  const primary = identity.primaryTrack ?? ctx.trackRows[0] ?? null;
   return {
     locale,
     memberName:

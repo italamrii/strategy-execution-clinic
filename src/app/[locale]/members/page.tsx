@@ -61,6 +61,21 @@ export default async function MembersDirectoryPage({
             <p className="mt-1 text-sm text-muted">
               {locale === "ar" ? m.headlineAr : m.headlineEn}
             </p>
+            {m.primaryTrack || m.isGroupLeader ? (
+              <p className="mt-2 text-xs text-navy">
+                {m.isGroupLeader
+                  ? locale === "ar"
+                    ? "قائد المسار"
+                    : "Group Leader"
+                  : null}
+                {m.isGroupLeader && m.primaryTrack ? " · " : null}
+                {m.primaryTrack
+                  ? locale === "ar"
+                    ? m.primaryTrack.nameAr
+                    : m.primaryTrack.nameEn
+                  : null}
+              </p>
+            ) : null}
             {m.publicCode ? (
               <Link href={`/members/${m.publicCode}`} className="mt-3 inline-block text-gold-deep">
                 {t("viewProfile")}

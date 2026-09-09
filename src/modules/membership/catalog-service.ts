@@ -43,6 +43,15 @@ export async function seedMembershipCatalog(): Promise<void> {
       where: eq(tracks.slug, track.slug),
     });
     if (existing) {
+      await db
+        .update(tracks)
+        .set({
+          nameAr: track.nameAr,
+          nameEn: track.nameEn,
+          sortOrder: index + 1,
+          updatedAt: new Date(),
+        })
+        .where(eq(tracks.id, existing.id));
       continue;
     }
     await db.insert(tracks).values({
@@ -55,6 +64,9 @@ export async function seedMembershipCatalog(): Promise<void> {
       sortOrder: index + 1,
     });
   }
+
+  const { seedTracksOperatingCatalog } = await import("@/modules/tracks");
+  await seedTracksOperatingCatalog();
 }
 
 export async function listPublicMembershipTypes() {

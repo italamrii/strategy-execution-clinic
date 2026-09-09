@@ -1024,6 +1024,15 @@ async function changeMembershipStatus(input: {
     after: { status: input.to },
   });
 
+  if (input.to === "suspended" || input.to === "revoked" || input.to === "expired") {
+    const { suspendTrackPrivilegesForUser } = await import("@/modules/tracks");
+    await suspendTrackPrivilegesForUser({
+      userId: membership.userId,
+      reason: `membership_${input.to}`,
+      requestId: input.requestId,
+    });
+  }
+
   const { syncCredentialWithMembership } = await import("@/modules/credentials/service");
   await syncCredentialWithMembership({
     membershipId: input.membershipId,

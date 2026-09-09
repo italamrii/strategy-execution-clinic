@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireLocale } from "@/i18n/locale";
 import { verifyPublicCode } from "@/modules/credentials";
 import { CredentialError } from "@/modules/credentials/errors";
+import { TrackIdentityBadges } from "@/modules/tracks/ui/track-identity-badges";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -120,8 +121,16 @@ export default async function VerifyCredentialPage({
           <div>
             <dt className="text-muted">{t("track")}</dt>
             <dd className="mt-1 text-ink">
-              {locale === "ar" ? dto.tracks[0].nameAr : dto.tracks[0].nameEn}
+              {locale === "ar"
+                ? dto.primaryTrack?.nameAr ?? dto.tracks[0].nameAr
+                : dto.primaryTrack?.nameEn ?? dto.tracks[0].nameEn}
             </dd>
+            <TrackIdentityBadges
+              locale={locale}
+              primaryTrack={dto.primaryTrack}
+              isGroupLeader={dto.isGroupLeader}
+              tracks={dto.tracks}
+            />
           </div>
         ) : null}
         <div>

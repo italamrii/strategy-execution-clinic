@@ -18,6 +18,7 @@
     "db:migrate": "tsx scripts/db-migrate.ts",
     "db:seed-rbac": "tsx scripts/seed-rbac.ts",
     "db:seed-membership": "tsx scripts/seed-membership.ts",
+    "db:seed-tracks": "tsx scripts/seed-tracks.ts",
     "credentials:backfill": "tsx scripts/backfill-credentials.ts",
     "bootstrap:admin": "tsx scripts/bootstrap-admin.ts",
     "process-notifications": "tsx scripts/process-notifications.ts",

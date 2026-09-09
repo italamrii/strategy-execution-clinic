@@ -48,7 +48,7 @@ export function Hero({
             <Link className="institutional-button institutional-button--primary" href="/membership/apply">
               {primary}<span aria-hidden>↗</span>
             </Link>
-            <Link className="institutional-button institutional-button--secondary" href="/#tracks">
+            <Link className="institutional-button institutional-button--secondary" href="/tracks">
               {secondary}<span aria-hidden>↓</span>
             </Link>
           </div>
@@ -64,15 +64,33 @@ export function EditorialGrid({ children }: { children: React.ReactNode }) {
   return <div className="editorial-grid">{children}</div>;
 }
 
-export function TrackItem({ index, title, description }: { index: number; title: string; description?: string }) {
-  return (
-    <article className="track-item">
+export function TrackItem({
+  index,
+  title,
+  description,
+  href,
+}: {
+  index: number;
+  title: string;
+  description?: string;
+  href?: string;
+}) {
+  const body = (
+    <>
       <span className="track-item__number numeric">{String(index + 1).padStart(2, "0")}</span>
       <h3>{title}</h3>
       {description ? <p>{description}</p> : null}
       <span className="track-item__arrow" aria-hidden>↗</span>
-    </article>
+    </>
   );
+  if (href) {
+    return (
+      <Link href={href} className="track-item">
+        {body}
+      </Link>
+    );
+  }
+  return <article className="track-item">{body}</article>;
 }
 
 export function MembershipPreview({

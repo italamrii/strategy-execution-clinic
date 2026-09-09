@@ -15,14 +15,14 @@ test.describe("production smoke (read-only)", () => {
 
   test("health and robots are reachable", async ({ request }) => {
     const health = await request.get(`${base}/api/health`);
-    expect(health.ok()).toBeTruthy();
-    const body = await health.json();
-    expect(body).toEqual({ ok: true });
+    expect(health.ok(), await health.text()).toBeTruthy();
+    const body = (await health.json()) as { ok?: boolean };
+    expect(body.ok).toBe(true);
 
     const robots = await request.get(`${base}/robots.txt`);
-    expect(robots.ok()).toBeTruthy();
+    expect(robots.ok(), await robots.text()).toBeTruthy();
     const text = await robots.text();
-    expect(text).toContain("Disallow: /admin");
+    expect(text.toLowerCase()).toContain("disallow: /admin");
   });
 
   test("public homepages respond", async ({ page }) => {

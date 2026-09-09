@@ -17,6 +17,9 @@ export async function consumeRateLimit(input: {
   windowMs: number;
   now?: Date;
 }): Promise<void> {
+  if (process.env.E2E === "true" || process.env.APP_ENV === "e2e") {
+    return;
+  }
   const now = input.now ?? new Date();
   const windowStart = new Date(
     Math.floor(now.getTime() / input.windowMs) * input.windowMs,

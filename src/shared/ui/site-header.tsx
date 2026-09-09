@@ -12,8 +12,8 @@ export function SiteHeader({ signedIn = false, unreadNotifications = 0 }: { sign
   const [open, setOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
   const links = [
-    ["/", t("home")], ["/membership", t("membership")], ["/about", t("about")],
-    ["/#tracks", t("tracks")], ["/volunteer", t("volunteer")], ["/members", t("members")], ["/contact", t("contact")],
+    ["/", t("home")], ["/membership", t("membership")], ["/tracks", t("tracks")], ["/about", t("about")],
+    ["/volunteer", t("volunteer")], ["/members", t("members")], ["/contact", t("contact")],
   ] as const;
 
   useEffect(() => {

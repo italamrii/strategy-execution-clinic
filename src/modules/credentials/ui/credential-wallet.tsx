@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { OwnCredentialDto } from "@/modules/credentials";
 import { CredentialCardStage } from "./credential-card-stage";
+import { TrackIdentityBadges } from "@/modules/tracks/ui/track-identity-badges";
 
 function statusClass(status: string) {
   if (status === "active") return "text-success";
@@ -21,7 +22,7 @@ export function StaticMembershipCard({
   const t = useTranslations("credential");
   const typeName =
     locale === "ar" ? credential.membershipTypeAr : credential.membershipTypeEn;
-  const track = credential.tracks[0];
+  const track = credential.primaryTrack ?? credential.tracks[0];
   const trackName = track
     ? locale === "ar"
       ? track.nameAr
@@ -43,6 +44,16 @@ export function StaticMembershipCard({
       </h2>
       <p className="mt-2 text-graphite">{typeName}</p>
       {trackName ? <p className="mt-1 text-sm text-muted">{trackName}</p> : null}
+      <TrackIdentityBadges
+        locale={locale}
+        primaryTrack={
+          credential.primaryTrack
+            ? { ...credential.primaryTrack, role: "primary" }
+            : null
+        }
+        isGroupLeader={credential.isGroupLeader}
+        tracks={credential.tracks}
+      />
       <p className="numeric mt-8 text-sm tracking-wider text-gold-deep" data-testid="public-code">
         {credential.publicCode}
       </p>
@@ -172,12 +183,12 @@ function ShareKit({
   const verifyUrl = locale === "ar" ? credential.verificationUrlAr : credential.verificationUrlEn;
   const typeName =
     locale === "ar" ? credential.membershipTypeAr : credential.membershipTypeEn;
-  const track = credential.tracks[0];
+  const track = credential.primaryTrack ?? credential.tracks[0];
   const trackName = track ? (locale === "ar" ? track.nameAr : track.nameEn) : "";
   const caption =
     locale === "ar"
-      ? `يسعدني الانضمام إلى عيادة الاستراتيجية والتنفيذ كـ ${typeName}${trackName ? ` ضمن مسار ${trackName}` : ""}.\n\n#عيادة_الاستراتيجية_والتنفيذ`
-      : `I'm pleased to join Strategy & Execution Clinic as ${typeName}${trackName ? ` in the ${trackName} track` : ""}.\n\n#StrategyExecutionClinic`;
+      ? `يسعدني الانضمام إلى عيادة الاستراتيجية والتنفيذ كـ ${typeName}${trackName ? ` ضمن مسار ${trackName}` : ""}${credential.isGroupLeader ? " · قائد المسار" : ""}.\n\n#عيادة_الاستراتيجية_والتنفيذ`
+      : `I'm pleased to join Strategy & Execution Clinic as ${typeName}${trackName ? ` in the ${trackName} track` : ""}${credential.isGroupLeader ? " · Group Leader" : ""}.\n\n#StrategyExecutionClinic`;
 
   const linkedIn = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(verifyUrl)}`;
 

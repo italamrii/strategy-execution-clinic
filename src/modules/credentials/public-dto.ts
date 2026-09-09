@@ -7,6 +7,14 @@ export const CREDENTIAL_STATUSES = [
 
 export type CredentialStatus = (typeof CREDENTIAL_STATUSES)[number];
 
+export type PublicTrackIdentity = {
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+  iconKey: string;
+  role: "primary" | "secondary" | "group_leader" | "deputy";
+};
+
 export type VerificationSource = {
   publicCode: string;
   status: CredentialStatus;
@@ -14,12 +22,14 @@ export type VerificationSource = {
   displayNameEn: string | null;
   membershipTypeNameAr: string;
   membershipTypeNameEn: string;
-  tracks: { nameAr: string; nameEn: string }[];
+  tracks: { nameAr: string; nameEn: string; slug?: string; iconKey?: string }[];
+  primaryTrack: PublicTrackIdentity | null;
+  isGroupLeader: boolean;
   memberSinceYear: number;
   issuedAt: string;
   approvedVolunteerHours: number | null;
   hoursPublic: boolean;
-  badges: { nameAr: string; nameEn: string }[];
+  badges: { nameAr: string; nameEn: string; slug?: string }[];
   photoUrl: string | null;
   email?: string;
   phone?: string;
@@ -35,11 +45,13 @@ export type PublicVerificationDto = {
   displayNameEn: string | null;
   membershipTypeNameAr: string;
   membershipTypeNameEn: string;
-  tracks: { nameAr: string; nameEn: string }[];
+  tracks: { nameAr: string; nameEn: string; slug?: string; iconKey?: string }[];
+  primaryTrack: PublicTrackIdentity | null;
+  isGroupLeader: boolean;
   memberSinceYear: number;
   issuedAt: string;
   approvedVolunteerHours: number | null;
-  badges: { nameAr: string; nameEn: string }[];
+  badges: { nameAr: string; nameEn: string; slug?: string }[];
   photoUrl: string | null;
 };
 
@@ -61,6 +73,8 @@ export function toPublicVerificationDto(
     membershipTypeNameAr: safe.membershipTypeNameAr,
     membershipTypeNameEn: safe.membershipTypeNameEn,
     tracks: safe.tracks,
+    primaryTrack: safe.primaryTrack,
+    isGroupLeader: safe.isGroupLeader,
     memberSinceYear: safe.memberSinceYear,
     issuedAt: safe.issuedAt,
     approvedVolunteerHours: source.hoursPublic ? source.approvedVolunteerHours : null,

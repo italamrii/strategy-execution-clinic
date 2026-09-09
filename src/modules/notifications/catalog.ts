@@ -16,6 +16,14 @@ export const NOTIFICATION_EVENT_TYPES = [
   "BADGE_AWARDED",
   "CERTIFICATE_ISSUED",
   "SYSTEM_ANNOUNCEMENT",
+  "TRACK_APPLICATION_RECEIVED",
+  "TRACK_APPLICATION_APPROVED",
+  "TRACK_APPLICATION_REJECTED",
+  "TRACK_LEADER_APPOINTED",
+  "TRACK_CONTRIBUTION_STATUS_CHANGED",
+  "TRACK_TASK_ASSIGNED",
+  "TRACK_WORKSHOP_REMINDER",
+  "TRACK_BADGE_EARNED",
 ] as const;
 
 export type NotificationEventType = (typeof NOTIFICATION_EVENT_TYPES)[number];
@@ -25,6 +33,7 @@ export const NOTIFICATION_CATEGORIES = [
   "membership",
   "volunteering",
   "recognition",
+  "tracks",
   "system",
 ] as const;
 
@@ -65,6 +74,14 @@ export const EVENT_CATEGORY: Record<NotificationEventType, NotificationCategory>
   BADGE_AWARDED: "recognition",
   CERTIFICATE_ISSUED: "recognition",
   SYSTEM_ANNOUNCEMENT: "system",
+  TRACK_APPLICATION_RECEIVED: "tracks",
+  TRACK_APPLICATION_APPROVED: "tracks",
+  TRACK_APPLICATION_REJECTED: "tracks",
+  TRACK_LEADER_APPOINTED: "tracks",
+  TRACK_CONTRIBUTION_STATUS_CHANGED: "tracks",
+  TRACK_TASK_ASSIGNED: "tracks",
+  TRACK_WORKSHOP_REMINDER: "tracks",
+  TRACK_BADGE_EARNED: "tracks",
 };
 
 export const EMAIL_TEMPLATE_BY_EVENT: Record<NotificationEventType, string> = {
@@ -85,6 +102,14 @@ export const EMAIL_TEMPLATE_BY_EVENT: Record<NotificationEventType, string> = {
   BADGE_AWARDED: "recognition.badge_awarded",
   CERTIFICATE_ISSUED: "recognition.certificate_issued",
   SYSTEM_ANNOUNCEMENT: "system.announcement",
+  TRACK_APPLICATION_RECEIVED: "track.application_received",
+  TRACK_APPLICATION_APPROVED: "track.application_approved",
+  TRACK_APPLICATION_REJECTED: "track.application_rejected",
+  TRACK_LEADER_APPOINTED: "track.leader_appointed",
+  TRACK_CONTRIBUTION_STATUS_CHANGED: "track.contribution_status",
+  TRACK_TASK_ASSIGNED: "track.task_assigned",
+  TRACK_WORKSHOP_REMINDER: "track.workshop_reminder",
+  TRACK_BADGE_EARNED: "track.badge_earned",
 };
 
 export const IN_APP_COPY: Record<
@@ -192,6 +217,54 @@ export const IN_APP_COPY: Record<
     titleEn: "Clinic announcement",
     bodyAr: "لديك إعلان جديد من العيادة.",
     bodyEn: "You have a new announcement from the Clinic.",
+  },
+  TRACK_APPLICATION_RECEIVED: {
+    titleAr: "تم استلام طلب المسار",
+    titleEn: "Track application received",
+    bodyAr: "تم استلام طلب انضمامك إلى المسار وهو قيد المراجعة.",
+    bodyEn: "Your track join application was received and is under review.",
+  },
+  TRACK_APPLICATION_APPROVED: {
+    titleAr: "تمت الموافقة على الانضمام للمسار",
+    titleEn: "Track application approved",
+    bodyAr: "تمت الموافقة على انضمامك إلى المسار المهني.",
+    bodyEn: "Your track membership application was approved.",
+  },
+  TRACK_APPLICATION_REJECTED: {
+    titleAr: "لم يُقبل طلب المسار",
+    titleEn: "Track application rejected",
+    bodyAr: "لم يُقبل طلب انضمامك إلى المسار في هذه المرحلة.",
+    bodyEn: "Your track application was not approved at this time.",
+  },
+  TRACK_LEADER_APPOINTED: {
+    titleAr: "تم تعيينك في قيادة مسار",
+    titleEn: "Track leadership appointed",
+    bodyAr: "تم تعيينك قائداً أو نائباً لمسار مهني.",
+    bodyEn: "You were appointed as a track leader or deputy.",
+  },
+  TRACK_CONTRIBUTION_STATUS_CHANGED: {
+    titleAr: "تحديث حالة مساهمة المسار",
+    titleEn: "Track contribution status updated",
+    bodyAr: "تم تحديث حالة مساهمتك داخل المسار.",
+    bodyEn: "Your track contribution status was updated.",
+  },
+  TRACK_TASK_ASSIGNED: {
+    titleAr: "مهمة مسار جديدة",
+    titleEn: "Track task assigned",
+    bodyAr: "تم تعيين مهمة جديدة لك داخل المسار.",
+    bodyEn: "A new track task was assigned to you.",
+  },
+  TRACK_WORKSHOP_REMINDER: {
+    titleAr: "تذكير بورشة المسار",
+    titleEn: "Track workshop reminder",
+    bodyAr: "لديك ورشة أو فعالية قادمة ضمن مسارك.",
+    bodyEn: "You have an upcoming workshop or event in your track.",
+  },
+  TRACK_BADGE_EARNED: {
+    titleAr: "شارة مسار جديدة",
+    titleEn: "Track badge earned",
+    bodyAr: "حصلت على شارة مرتبطة بمسارك المهني.",
+    bodyEn: "You earned a badge related to your professional track.",
   },
 };
 

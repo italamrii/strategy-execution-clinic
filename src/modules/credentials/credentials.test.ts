@@ -24,12 +24,23 @@ describe("public verification DTO", () => {
     displayNameEn: "Abdullah Alamri",
     membershipTypeNameAr: "عضو متطوع",
     membershipTypeNameEn: "Volunteer Member",
-    tracks: [{ nameAr: "مسار الذكاء الاصطناعي والأتمتة", nameEn: "AI & Automation" }],
+    tracks: [{ nameAr: "مسار الذكاء الاصطناعي والأتمتة", nameEn: "AI & Automation", slug: "ai-automation" }],
+    primaryTrack: {
+      slug: "ai-automation",
+      nameAr: "مسار الذكاء الاصطناعي والأتمتة",
+      nameEn: "AI & Automation Path",
+      iconKey: "ai-automation",
+      role: "primary" as const,
+    },
+    isGroupLeader: true,
     memberSinceYear: 2026,
     issuedAt: "2026-01-15T00:00:00.000Z",
     approvedVolunteerHours: 84,
     hoursPublic: true,
-    badges: [{ nameAr: "مساهم", nameEn: "Contributor" }],
+    badges: [
+      { nameAr: "مساهم", nameEn: "Contributor" },
+      { nameAr: "قائد المسار", nameEn: "Group Leader", slug: "track_group_leader" },
+    ],
     photoUrl: null,
     email: "secret@example.com",
     phone: "+966500000000",
@@ -48,6 +59,14 @@ describe("public verification DTO", () => {
     const dto = toPublicVerificationDto(source);
     expect(dto.verified).toBe(false);
     expect(dto.status).toBe("REVOKED");
+  });
+
+  it("exposes verified track identity without private fields", () => {
+    const dto = toPublicVerificationDto(source);
+    expect(dto.primaryTrack?.slug).toBe("ai-automation");
+    expect(dto.isGroupLeader).toBe(true);
+    expect(dto.badges.some((b) => b.slug === "track_group_leader")).toBe(true);
+    expect(publicDtoLeaksPrivate(dto)).toBe(false);
   });
 
   it("hides hours when the member has not made them public", () => {
