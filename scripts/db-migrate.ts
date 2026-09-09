@@ -1,4 +1,4 @@
-import "dotenv/config";
+﻿import "dotenv/config";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -27,7 +27,6 @@ async function main() {
   await migrate(db, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
   await sql.end({ timeout: 5 });
   console.log("Migrations applied successfully");
-  console.log(`DATABASE_URL=${url}`);
 }
 
 main().catch((error) => {
