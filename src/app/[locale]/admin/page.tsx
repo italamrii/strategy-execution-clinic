@@ -12,6 +12,7 @@ import {
 } from "@/modules/admin";
 import { AdminNav } from "@/shared/ui/admin-nav";
 import { AdminSearchForm } from "@/modules/admin/ui/admin-search-form";
+import { Link } from "@/i18n/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,17 @@ export default async function AdminDashboardPage({
     await requireAuthenticatedPermission("admin.dashboard.read");
   } catch (error) {
     if (error instanceof AuthorizationError) {
-      return <main className="mx-auto max-w-6xl px-6 py-24"><h1>{t("forbidden")}</h1></main>;
+      return (
+        <main id="main" className="mx-auto max-w-2xl px-6 py-16" data-access="denied">
+          <section className="rounded-2xl border border-line bg-surface p-8 shadow-sm sm:p-12">
+            <p className="text-sm font-semibold tracking-widest text-muted">403</p>
+            <h1 className="mt-4 text-3xl text-navy">{t("forbidden")}</h1>
+            <p className="mt-4 leading-8 text-muted">{t("accessExplanation")}</p>
+            <p className="mt-4 break-words rounded-lg bg-gold/10 p-4 text-sm text-ink" dir="ltr">{auth.email}</p>
+            <Link href="/account" className="mt-8 inline-flex rounded-xl bg-navy px-6 py-3 text-white">{t("backToAccount")}</Link>
+          </section>
+        </main>
+      );
     }
     throw error;
   }
@@ -46,7 +57,7 @@ export default async function AdminDashboardPage({
   ]);
 
   return (
-    <main id="main" className="mx-auto max-w-6xl px-6 py-16">
+    <main id="main" data-access="granted" className="mx-auto max-w-6xl px-6 py-16">
       <h1 className="text-4xl text-ink">{t("title")}</h1>
       <p className="mt-2 text-muted">{t("subtitle")}</p>
       <AdminNav active="overview" />
@@ -92,7 +103,7 @@ export default async function AdminDashboardPage({
 
 function MetricCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="border border-line bg-surface p-4">
+    <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
       <p className="text-sm text-muted">{label}</p>
       <p className="mt-2 text-3xl text-navy">{value}</p>
     </div>

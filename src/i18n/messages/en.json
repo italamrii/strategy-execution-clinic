@@ -666,6 +666,8 @@
     "settings": "Settings"
   },
   "adminDashboard": {
+    "accessExplanation": "You are signed in with the account below, but it does not have dashboard access. Check that you are using the correct administrator account. Refreshing the page does not change permissions.",
+    "backToAccount": "Back to my account",
     "title": "Operations dashboard",
     "subtitle": "Authoritative metrics from the Clinic database.",
     "unauthorized": "Unauthorized",

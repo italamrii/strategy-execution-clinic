@@ -21,7 +21,7 @@ import { ROLE_PERMISSION_MAP, ROLE_SEEDS, PERMISSIONS } from "./catalog";
 export async function getPermissionsForUser(userId: string): Promise<string[]> {
   const db = getDb();
   const assignments = await db.query.userRoles.findMany({
-    where: eq(userRoles.userId, userId),
+    where: and(eq(userRoles.userId, userId), isNull(userRoles.organizationId)),
   });
   if (assignments.length === 0) {
     return [...ROLE_PERMISSION_MAP.member];
@@ -43,7 +43,7 @@ export async function getPermissionsForUser(userId: string): Promise<string[]> {
 export async function getRolesForUser(userId: string): Promise<string[]> {
   const db = getDb();
   const assignments = await db.query.userRoles.findMany({
-    where: eq(userRoles.userId, userId),
+    where: and(eq(userRoles.userId, userId), isNull(userRoles.organizationId)),
   });
   if (assignments.length === 0) {
     return ["member"];

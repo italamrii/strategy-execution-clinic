@@ -23,15 +23,16 @@ const LINKS = [
 export function AdminNav({ active }: { active: (typeof LINKS)[number]["key"] }) {
   const t = useTranslations("adminNav");
   return (
-    <nav className="mt-6 flex flex-wrap gap-3 text-sm">
+    <nav aria-label={t("overview")} className="mt-6 flex flex-wrap gap-2 rounded-2xl border border-line bg-surface p-3 text-sm">
       {LINKS.map((link) => (
         <Link
           key={link.key}
           href={link.href}
+          aria-current={active === link.key ? "page" : undefined}
           className={
             active === link.key
-              ? "border-b border-gold text-navy"
-              : "text-graphite hover:text-navy"
+              ? "rounded-xl bg-navy px-4 py-3 text-white focus-visible:outline-2 focus-visible:outline-gold"
+              : "rounded-xl px-4 py-3 text-graphite transition-colors hover:bg-gold/10 hover:text-navy focus-visible:outline-2 focus-visible:outline-gold"
           }
         >
           {t(link.key)}

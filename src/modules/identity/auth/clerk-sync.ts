@@ -100,7 +100,7 @@ async function ensureMemberRole(userId: string): Promise<void> {
  * Idempotent: does nothing if role already assigned.
  * Writes audit event when newly assigned.
  */
-async function ensureBootstrapSuperAdmin(
+export async function ensureBootstrapSuperAdmin(
   userId: string,
   userEmail: string,
   requestId: string | null,
@@ -126,11 +126,21 @@ async function ensureBootstrapSuperAdmin(
   }
 
   const db = getDb();
-  const superAdminRole = await db.query.roles.findFirst({
+  let superAdminRole = await db.query.roles.findFirst({
     where: eq(roles.slug, "super_admin"),
   });
   if (!superAdminRole) {
-    return;
+    await db.insert(roles).values({
+      id: uuidv7(),
+      slug: "super_admin",
+      nameAr: "مدير أعلى",
+      nameEn: "Super Admin",
+      isSystem: true,
+    }).onConflictDoNothing({ target: roles.slug });
+    superAdminRole = await db.query.roles.findFirst({
+      where: eq(roles.slug, "super_admin"),
+    });
+    if (!superAdminRole) throw new Error("bootstrap_role_unavailable");
   }
 
   const existing = await db.query.userRoles.findFirst({
@@ -176,7 +186,6 @@ async function createLocalUserSkeleton(
   email: string,
   clerkUserId: string,
   locale: "ar" | "en",
-  requestId: string | null,
 ): Promise<LocalUserRecord> {
   const db = getDb();
   const id = uuidv7();
@@ -207,7 +216,6 @@ async function createLocalUserSkeleton(
     updatedAt: now,
   });
   await ensureMemberRole(id);
-  await ensureBootstrapSuperAdmin(id, email, requestId);
   return {
     id,
     email,
@@ -285,7 +293,7 @@ export async function syncClerkIdentityToLocalUser(
   const now = new Date();
 
   if (plan.action === "create") {
-    local = await createLocalUserSkeleton(email, identity.clerkUserId, locale, requestId);
+    local = await createLocalUserSkeleton(email, identity.clerkUserId, locale);
   } else if (plan.action === "link") {
     await db
       .update(users)
@@ -297,11 +305,9 @@ export async function syncClerkIdentityToLocalUser(
       .where(eq(users.id, plan.user.id));
     local = { ...plan.user, clerkUserId: identity.clerkUserId };
     await ensureMemberRole(local.id);
-    await ensureBootstrapSuperAdmin(local.id, local.email, requestId);
   } else {
     local = plan.user;
     await ensureMemberRole(local.id);
-    await ensureBootstrapSuperAdmin(local.id, local.email, requestId);
   }
 
   if (local.status !== "active") {
@@ -321,6 +327,8 @@ export async function syncClerkIdentityToLocalUser(
     });
     throw new ClerkMappingError("account_restricted");
   }
+
+  await ensureBootstrapSuperAdmin(local.id, local.email, requestId);
 
   if (options?.touchLogin || options?.auditLogin) {
     await db
@@ -345,4 +353,3 @@ export async function syncClerkIdentityToLocalUser(
 
   return local;
 }
-
