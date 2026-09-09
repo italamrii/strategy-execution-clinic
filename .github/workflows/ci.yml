@@ -13,8 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 11
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -28,12 +26,14 @@ jobs:
         env:
           AUTH_SECRET: ci-auth-secret-phase1-not-production
           EMAIL_PROVIDER: memory
+          AUTH_PROVIDER: legacy
       - run: pnpm build
       - run: pnpm validate:env
         env:
           APP_ENV: local
           DATABASE_URL: postgres://clinic:clinic@127.0.0.1:5432/clinic
           AUTH_SECRET: ci-auth-secret-phase1-not-production-32chars
+          AUTH_PROVIDER: legacy
       - name: Secret pattern scan
         run: |
           ! rg -i "(smtp_pass|api[_-]?key)\s*=\s*[^$\s]" --glob '!*.example' --glob '!.env*' --glob '!pnpm-lock.yaml' || true
@@ -47,8 +47,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 11
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -65,10 +63,12 @@ jobs:
           pnpm db:seed-rbac
         env:
           AUTH_SECRET: ci-auth-secret-phase1-not-production
+          AUTH_PROVIDER: legacy
       - run: pnpm test:e2e
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           AUTH_SECRET: ci-auth-secret-phase1-not-production
           EMAIL_PROVIDER: memory
           ENABLE_TEST_OTP_ENDPOINT: "true"
+          AUTH_PROVIDER: legacy
         continue-on-error: true
