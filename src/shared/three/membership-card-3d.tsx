@@ -1,224 +1,171 @@
 "use client";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { ContactShadows, RoundedBox, Text } from "@react-three/drei";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { Group, Mesh } from "three";
-
-type CardVariant =
-  | "founding_member"
-  | "expert_member"
-  | "professional_member"
-  | "contributor"
-  | "volunteer_member"
-  | "volunteer_leader"
-  | "distinguished_volunteer"
-  | "strategic_partner"
-  | "institutional_member";
-
-const ACCENTS: Record<CardVariant, { border: string; gold: string }> = {
-  founding_member: { border: "#A68654", gold: "#C4A574" },
-  expert_member: { border: "#152238", gold: "#C4A574" },
-  professional_member: { border: "#D4CDBF", gold: "#152238" },
-  contributor: { border: "#D4CDBF", gold: "#4B5563" },
-  volunteer_member: { border: "#A68654", gold: "#152238" },
-  volunteer_leader: { border: "#152238", gold: "#C4A574" },
-  distinguished_volunteer: { border: "#A68654", gold: "#152238" },
-  strategic_partner: { border: "#152238", gold: "#4B5563" },
-  institutional_member: { border: "#152238", gold: "#6B7280" },
-};
+import { ContactShadows, RoundedBox } from "@react-three/drei";
+import { useEffect, useRef, useState } from "react";
+import {
+  SRGBColorSpace,
+  Texture,
+  TextureLoader,
+  type Group,
+} from "three";
 
 function CardMesh({
-  memberName,
-  typeLabel,
-  publicCode,
-  variant,
+  texture,
   flipped,
   tilt,
 }: {
-  memberName: string;
-  typeLabel: string;
-  publicCode: string;
-  variant: CardVariant;
+  texture: Texture;
   flipped: boolean;
   tilt: { x: number; y: number };
 }) {
   const group = useRef<Group>(null);
-  const front = useRef<Mesh>(null);
-  const accent = ACCENTS[variant] ?? ACCENTS.professional_member;
 
   useFrame(() => {
     if (!group.current) return;
-    group.current.rotation.x = tilt.x;
-    group.current.rotation.y = flipped ? Math.PI + tilt.y : tilt.y;
+    group.current.rotation.x += (tilt.x - group.current.rotation.x) * 0.12;
+    const targetY = flipped ? Math.PI + tilt.y : tilt.y;
+    group.current.rotation.y += (targetY - group.current.rotation.y) * 0.12;
   });
 
   return (
     <group ref={group}>
-      <mesh ref={front} position={[0, 0, 0.028]}>
-        <RoundedBox args={[3.2, 2, 0.04]} radius={0.06} smoothness={4}>
-          <meshPhysicalMaterial
-            color="#0B1D33"
-            roughness={0.28}
-            metalness={0.18}
-            clearcoat={0.35}
-            clearcoatRoughness={0.4}
-          />
+      <mesh position={[0, 0, 0.03]}>
+        <planeGeometry args={[3.2, 2]} />
+        <meshPhysicalMaterial
+          map={texture}
+          roughness={0.28}
+          metalness={0.12}
+          clearcoat={0.28}
+          clearcoatRoughness={0.45}
+        />
+      </mesh>
+      <mesh position={[0, 0, -0.03]} rotation={[0, Math.PI, 0]}>
+        <RoundedBox args={[3.2, 2, 0.05]} radius={0.05} smoothness={4}>
+          <meshPhysicalMaterial color="#0B1D33" roughness={0.32} metalness={0.18} />
         </RoundedBox>
       </mesh>
-      <mesh position={[0, 0, 0.031]}>
-        <planeGeometry args={[3.05, 1.85]} />
-        <meshBasicMaterial color={accent.border} transparent opacity={0.12} />
+      <mesh position={[0, 0, -0.06]} rotation={[0, Math.PI, 0]}>
+        <planeGeometry args={[2.6, 0.08]} />
+        <meshBasicMaterial color="#C4A574" />
       </mesh>
-      <Text
-        position={[-1.35, 0.72, 0.05]}
-        fontSize={0.11}
-        color={accent.gold}
-        anchorX="left"
-        anchorY="top"
-        maxWidth={2.8}
-        letterSpacing={0.08}
-      >
-        STRATEGY & EXECUTION CLINIC
-      </Text>
-      <Text
-        position={[-1.35, 0.35, 0.05]}
-        fontSize={0.22}
-        color="#F7F3EA"
-        anchorX="left"
-        anchorY="top"
-        maxWidth={2.7}
-      >
-        {memberName.slice(0, 42)}
-      </Text>
-      <Text
-        position={[-1.35, -0.05, 0.05]}
-        fontSize={0.13}
-        color="#C6B994"
-        anchorX="left"
-        anchorY="top"
-        maxWidth={2.7}
-      >
-        {typeLabel.slice(0, 48)}
-      </Text>
-      <Text
-        position={[-1.35, -0.72, 0.05]}
-        fontSize={0.1}
-        color={accent.gold}
-        anchorX="left"
-        anchorY="top"
-        letterSpacing={0.06}
-      >
-        {publicCode}
-      </Text>
-      <mesh position={[0, 0, -0.028]} rotation={[0, Math.PI, 0]}>
-        <RoundedBox args={[3.2, 2, 0.04]} radius={0.06} smoothness={4}>
-          <meshPhysicalMaterial color="#f7f5f1" roughness={0.35} metalness={0.05} />
-        </RoundedBox>
-      </mesh>
-      <Text
-        position={[0, 0.2, -0.05]}
-        rotation={[0, Math.PI, 0]}
-        fontSize={0.12}
-        color="#152238"
-        anchorX="center"
-        anchorY="middle"
-      >
-        Scan to verify
-      </Text>
-      <Text
-        position={[0, -0.55, -0.05]}
-        rotation={[0, Math.PI, 0]}
-        fontSize={0.08}
-        color="#6B7280"
-        anchorX="center"
-        anchorY="middle"
-      >
-        {publicCode}
-      </Text>
     </group>
   );
 }
 
 export function MembershipCard3D({
-  memberName,
-  typeLabel,
-  publicCode,
-  variant,
-  fallback,
-  ariaLabel,
   credentialId,
+  locale,
+  ariaLabel,
+  hint,
+  flipLabel,
 }: {
-  memberName: string;
-  typeLabel: string;
-  publicCode: string;
-  variant: string;
-  fallback: ReactNode;
-  ariaLabel: string;
   credentialId: string;
+  locale: "ar" | "en";
+  ariaLabel: string;
+  hint: string;
+  flipLabel: string;
 }) {
-  const [mode, setMode] = useState<"3d" | "fallback">("fallback");
+  const [texture, setTexture] = useState<Texture | null>(null);
   const [flipped, setFlipped] = useState(false);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const cardVariant = (variant in ACCENTS ? variant : "professional_member") as CardVariant;
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const probe = document.createElement("canvas");
-      const gl = probe.getContext("webgl") || probe.getContext("webgl2");
-      setMode(reduced || !gl ? "fallback" : "3d");
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const narrow = window.matchMedia("(max-width: 767px)");
+    const probe = document.createElement("canvas");
+    const gl = probe.getContext("webgl") || probe.getContext("webgl2");
+    let cancelled = false;
+    let loaded: Texture | null = null;
 
-  if (mode !== "3d") {
-    return <>{fallback}</>;
-  }
+    const load = () => {
+      if (cancelled) return;
+      if (reduced.matches || narrow.matches || !gl) {
+        setTexture(null);
+        return;
+      }
+      const url = `/api/credentials/${encodeURIComponent(credentialId)}/export/png?locale=${locale}`;
+      void fetch(url, { credentials: "include" })
+        .then((response) => (response.ok ? response.blob() : Promise.reject(new Error("card png"))))
+        .then((blob) => {
+          if (cancelled) return;
+          const objectUrl = URL.createObjectURL(blob);
+          const loader = new TextureLoader();
+          loader.load(
+            objectUrl,
+            (next) => {
+              URL.revokeObjectURL(objectUrl);
+              if (cancelled) {
+                next.dispose();
+                return;
+              }
+              next.colorSpace = SRGBColorSpace;
+              next.anisotropy = 8;
+              loaded = next;
+              setTexture(next);
+            },
+            undefined,
+            () => {
+              URL.revokeObjectURL(objectUrl);
+              if (!cancelled) setTexture(null);
+            },
+          );
+        })
+        .catch(() => {
+          if (!cancelled) setTexture(null);
+        });
+    };
+
+    load();
+    reduced.addEventListener("change", load);
+    narrow.addEventListener("change", load);
+    return () => {
+      cancelled = true;
+      reduced.removeEventListener("change", load);
+      narrow.removeEventListener("change", load);
+      loaded?.dispose();
+    };
+  }, [credentialId, locale]);
+
+  if (!texture) return null;
 
   return (
-    <div
-      className="relative mx-auto aspect-[1.6/1] w-full max-w-xl"
-      role="img"
-      aria-label={ariaLabel}
-      data-testid="membership-card"
-      data-credential-id={credentialId}
-      onPointerMove={(event) => {
-        const rect = event.currentTarget.getBoundingClientRect();
-        const x = (event.clientY - rect.top - rect.height / 2) / rect.height;
-        const y = (event.clientX - rect.left - rect.width / 2) / rect.width;
-        setTilt({ x: x * 0.12, y: y * 0.18 });
-      }}
-      onPointerLeave={() => setTilt({ x: 0, y: 0 })}
-    >
-      <p className="sr-only" data-testid="public-code">
-        {publicCode}
-      </p>
+    <div className="membership-card-3d mx-auto w-full max-w-xl">
+      <p className="mb-3 text-center text-sm text-muted">{hint}</p>
+      <div
+        className="relative aspect-[1.6/1] w-full"
+        role="img"
+        aria-label={ariaLabel}
+        data-testid="membership-card-3d"
+        onPointerMove={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect();
+          const x = (event.clientY - rect.top - rect.height / 2) / rect.height;
+          const y = (event.clientX - rect.left - rect.width / 2) / rect.width;
+          setTilt({ x: x * 0.18, y: y * 0.28 });
+        }}
+        onPointerLeave={() => setTilt({ x: 0, y: 0 })}
+      >
+        <Canvas
+          camera={{ position: [0, 0, 4.6], fov: 32 }}
+          dpr={[1, 1.5]}
+          className="!h-full !w-full"
+          gl={{ alpha: true, antialias: true }}
+          aria-hidden
+        >
+          <ambientLight intensity={0.7} />
+          <directionalLight position={[3, 4, 5]} intensity={1.05} />
+          <directionalLight position={[-3, 1, 2]} intensity={0.35} />
+          <CardMesh texture={texture} flipped={flipped} tilt={tilt} />
+          <ContactShadows position={[0, -1.25, 0]} opacity={0.22} scale={8} blur={2.4} />
+        </Canvas>
+      </div>
       <button
         type="button"
-        className="absolute inset-0 z-10 cursor-pointer bg-transparent"
-        aria-label={ariaLabel}
+        className="mx-auto mt-3 block min-h-11 border border-line px-4 text-sm text-ink"
         onClick={() => setFlipped((value) => !value)}
-      />
-      <Canvas
-        camera={{ position: [0, 0, 4.8], fov: 35 }}
-        dpr={[1, 1.5]}
-        className="!h-full !w-full"
-        gl={{ alpha: true, antialias: true }}
       >
-        <ambientLight intensity={0.55} />
-        <directionalLight position={[3, 4, 5]} intensity={1.1} />
-        <directionalLight position={[-4, 2, -2]} intensity={0.35} />
-        <CardMesh
-          memberName={memberName}
-          typeLabel={typeLabel}
-          publicCode={publicCode}
-          variant={cardVariant}
-          flipped={flipped}
-          tilt={tilt}
-        />
-        <ContactShadows position={[0, -1.2, 0]} opacity={0.2} scale={8} blur={2.5} />
-      </Canvas>
+        {flipLabel}
+      </button>
     </div>
   );
 }

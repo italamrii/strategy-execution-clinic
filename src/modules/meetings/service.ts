@@ -5,29 +5,42 @@ import { writeAudit } from "@/modules/audit";
 import { getPermissionsForUser, requirePermission } from "@/modules/identity";
 import { sanitizePlainText } from "@/modules/notifications/sanitize";
 import { getDb } from "@/shared/db/client";
-import { consultationRequests, meetingParticipants, meetingRooms } from "@/shared/db/schema";
+import { consultationRequests, meetingParticipants, meetingRooms, profiles } from "@/shared/db/schema";
 import { MeetingError } from "./errors";
+import { signJitsiJwt } from "./jitsi-jwt";
+import {
+  canEnterPrivateConsultationMeeting,
+  meetingProviderSetup,
+  usesDefaultPublicJitsi,
+} from "./provider";
 
-function configuredJitsiOrigin() {
-  const raw = process.env.JITSI_DOMAIN?.trim() || "meet.jit.si";
-  const url = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
-  if (url.protocol !== "https:") throw new MeetingError("provider_misconfigured");
-  return url.origin;
-}
+export { canEnterPrivateConsultationMeeting, meetingProviderSetup, usesDefaultPublicJitsi };
 
-export function usesDefaultPublicJitsi() {
-  return !process.env.JITSI_DOMAIN?.trim();
-}
-
-export function meetingEmbedUrl(roomKey: string) {
+export function meetingEmbedUrl(
+  roomKey: string,
+  options?: { userId?: string; displayName?: string; moderator?: boolean },
+) {
+  const setup = meetingProviderSetup();
+  if (!setup.secure || !setup.origin || !setup.host) {
+    throw new MeetingError("provider_misconfigured");
+  }
   const params = new URLSearchParams({
     "config.prejoinPageEnabled": "true",
     "config.disableDeepLinking": "true",
     "config.fileRecordingsEnabled": "false",
     "config.liveStreamingEnabled": "false",
-    "config.hiddenDomain": "",
+    jwt: signJitsiJwt({
+      appId: process.env.JITSI_JWT_APP_ID!.trim(),
+      secret: process.env.JITSI_JWT_SECRET!.trim(),
+      issuer: process.env.JITSI_JWT_ISSUER,
+      host: setup.host,
+      room: roomKey,
+      userId: options?.userId ?? "clinic-member",
+      displayName: options?.displayName ?? "Clinic member",
+      moderator: options?.moderator ?? false,
+    }),
   });
-  return `${configuredJitsiOrigin()}/${encodeURIComponent(roomKey)}#${params.toString()}`;
+  return `${setup.origin}/${encodeURIComponent(roomKey)}#${params.toString()}`;
 }
 
 async function hasMeetingAccess(userId: string, meetingId: string) {
@@ -126,9 +139,24 @@ export async function getMeetingForUser(userId: string, meetingId: string) {
     isHost &&
     permissions.includes("meeting.start");
   const canManageLifecycle = isHost && (permissions.includes("meeting.manage") || permissions.includes("meeting.start"));
+  const setup = meetingProviderSetup();
+  const setupRequired =
+    !setup.secure && meeting.status !== "cancelled" && meeting.status !== "completed";
+  const joinable = setup.secure && meeting.status !== "cancelled" && meeting.status !== "completed";
+  let embedUrl: string | null = null;
+  if (joinable) {
+    const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, userId) });
+    embedUrl = meetingEmbedUrl(meeting.roomKey, {
+      userId,
+      displayName: profile?.displayNameEn || profile?.displayNameAr || "Clinic member",
+      moderator: isHost,
+    });
+  }
   return {
     ...meeting,
-    embedUrl: meeting.status === "cancelled" || meeting.status === "completed" ? null : meetingEmbedUrl(meeting.roomKey),
+    embedUrl,
+    setupRequired,
+    missingProviderConfig: setupRequired ? setup.missing : [],
     participantRole: participant?.role ?? null,
     canStart,
     canComplete: meeting.status === "live" && canManageLifecycle,

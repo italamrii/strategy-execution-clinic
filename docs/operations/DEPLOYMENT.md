@@ -76,12 +76,25 @@ Document each release migration compatibility in `docs/operations/RELEASE.md`.
 
 ## Audio/video meetings
 
-Set `JITSI_DOMAIN` to a hostname such as `meet.jit.si` or to the HTTPS origin of a
-managed/self-hosted Jitsi deployment. The app derives its CSP, camera, microphone,
-WebSocket, and iframe allowlists from this single value.
+Private consultation entry requires all of:
 
-Meeting pages and records are protected by platform permissions, and room names are
-generated with cryptographically random identifiers. The public `meet.jit.si` default
-is suitable for initial operation but does not make the conferencing provider private.
-For confidential advisory sessions, use a managed or self-hosted Jitsi deployment with
-provider-side authentication and the applicable retention policy.
+- `JITSI_DOMAIN` — HTTPS origin of a **private** Jitsi host. `meet.jit.si` is rejected because anyone with the room URL can join.
+- `JITSI_JWT_APP_ID` and `JITSI_JWT_SECRET` — Jitsi token plugin credentials. The app issues a short-lived, room-scoped JWT only to authorized participants.
+- Optional `JITSI_JWT_ISSUER` if it differs from the app id.
+
+Until those values are set, the platform still stores scheduled meetings but **does not render a joinable room**. The meeting page shows a setup-required state listing the missing variables.
+
+The conferencing host must enable JWT authentication (`tokenAuth` / `asap_accepted_*`). A bare `/room` URL without a JWT must be rejected by the provider; platform page authorization alone is not enough.
+
+## Migration 0014
+
+`drizzle/0014_support_and_membership_validity.sql` is new in this release (production at `8ca08cf` has not applied it).
+
+It creates `support_requests`, then updates membership validity **only** for untouched 0011 factory rows:
+
+| UUID | Slug | Result |
+| --- | --- | --- |
+| `…440002`–`…440007` | expert, professional, contributor, volunteer, volunteer leader, distinguished volunteer | 1-year (`fixed_days` / 365) **if** the row is still the 0011 default (`lifetime`, `validity_days` NULL, `renewal_required` false, `updated_at` within 5s of `created_at`) |
+| `…440001`, `…440008`, `…440009` | founding member, strategic partner, institutional member | not updated |
+
+Administrator-edited types are skipped because a later `updated_at` or a customized validity policy fails the WHERE clause. New types created after 0011 follow application defaults in `seedMembershipCatalog` / catalog writes, not this UPDATE.

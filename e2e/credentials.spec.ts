@@ -2,7 +2,20 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { mkdir } from "node:fs/promises";
 
-const SCREENSHOT_DIR = path.join("e2e", "screenshots");
+const SCREENSHOT_DIR = path.join("docs", "review", "pr-6");
+
+async function relativeLuminance(page: import("@playwright/test").Page, selector: string) {
+  return page.locator(selector).first().evaluate((el) => {
+    const color = getComputedStyle(el).color;
+    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!match) return 0;
+    const channels = match.slice(1, 4).map((value) => {
+      const channel = Number(value) / 255;
+      return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
+  });
+}
 
 async function setTheme(page: import("@playwright/test").Page, theme: "light" | "dark") {
   await page.evaluate((next) => {
@@ -77,11 +90,26 @@ test.describe("credentials e2e", () => {
       fullPage: false,
     });
     await page.getByRole("button", { name: /استخدام المظهر الداكن|Use dark theme/ }).click({ force: true });
+    await expect.poll(() => relativeLuminance(page, ".site-header__nav a")).toBeGreaterThan(0.55);
+    await expect.poll(() => relativeLuminance(page, ".header-login")).toBeGreaterThan(0.55);
     await page.screenshot({
       path: path.join(SCREENSHOT_DIR, "home-ar-dark.png"),
       fullPage: false,
     });
     await page.getByRole("button", { name: /استخدام المظهر الفاتح|Use light theme/ }).click({ force: true });
+    await page.goto("/en");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await page.screenshot({
+      path: path.join(SCREENSHOT_DIR, "home-en-light.png"),
+      fullPage: false,
+    });
+    await page.getByRole("button", { name: /Use dark theme|استخدام المظهر الداكن/ }).click({ force: true });
+    await expect.poll(() => relativeLuminance(page, ".site-header__nav a")).toBeGreaterThan(0.55);
+    await page.screenshot({
+      path: path.join(SCREENSHOT_DIR, "home-en-dark.png"),
+      fullPage: false,
+    });
+    await page.getByRole("button", { name: /Use light theme|استخدام المظهر الفاتح/ }).click({ force: true });
     await page.goto("/en/design-preview/credentials");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByText("SEC-FND-2026-K7M4QX")).toBeVisible();
@@ -127,6 +155,18 @@ test.describe("credentials e2e", () => {
       fullPage: true,
     });
     await setTheme(adminPage, "light");
+    await adminPage.goto("/ar/admin");
+    await expect(adminPage.locator("[data-access=granted]")).toBeVisible({ timeout: 20_000 });
+    await adminPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "admin-dashboard-ar.png"),
+      fullPage: true,
+    });
+    await setTheme(adminPage, "dark");
+    await adminPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "admin-dashboard-ar-dark.png"),
+      fullPage: true,
+    });
+    await setTheme(adminPage, "light");
 
     await memberPage.goto("/en/account/membership");
     await expect(memberPage.getByText(/Active Membership|عضوية فعالة/i)).toBeVisible({
@@ -149,6 +189,20 @@ test.describe("credentials e2e", () => {
     await setTheme(memberPage, "dark");
     await memberPage.screenshot({
       path: path.join(SCREENSHOT_DIR, "member-dashboard-en-dark.png"),
+      fullPage: true,
+    });
+    await setTheme(memberPage, "light");
+    await memberPage.goto("/ar/account");
+    await expect(memberPage.getByText(/خطوتك المهنية|Your next professional step/)).toBeVisible({
+      timeout: 20_000,
+    });
+    await memberPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "member-dashboard-ar.png"),
+      fullPage: true,
+    });
+    await setTheme(memberPage, "dark");
+    await memberPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "member-dashboard-ar-dark.png"),
       fullPage: true,
     });
     await setTheme(memberPage, "light");
@@ -222,6 +276,12 @@ test.describe("credentials e2e", () => {
       path: path.join(SCREENSHOT_DIR, "credential-ar.png"),
       fullPage: true,
     });
+    await setTheme(memberPage, "dark");
+    await memberPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "credential-ar-dark.png"),
+      fullPage: true,
+    });
+    await setTheme(memberPage, "light");
 
     const mobile = await browser.newContext({
       viewport: { width: 390, height: 844 },
@@ -233,6 +293,12 @@ test.describe("credentials e2e", () => {
     await mobilePage.screenshot({
       path: path.join(SCREENSHOT_DIR, "credential-mobile-en.png"),
       fullPage: true,
+    });
+    await mobilePage.getByRole("button", { name: /Open menu|فتح القائمة/i }).click();
+    await setTheme(mobilePage, "dark");
+    await mobilePage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "header-mobile-en-dark.png"),
+      fullPage: false,
     });
     await mobile.close();
 

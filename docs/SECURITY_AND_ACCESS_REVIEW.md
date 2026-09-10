@@ -154,8 +154,13 @@ Existing production set remains required:
 - `BOOTSTRAP_CONFIRM=YES` (exactly this value; omit or set anything else to disable bootstrap)
 - Object storage variables already required in production validation
 
-Optional:
+Optional (required for live private meeting entry):
 
-- `JITSI_DOMAIN` (HTTPS origin; defaults to `https://meet.jit.si`)
+- `JITSI_DOMAIN` — HTTPS origin of a **private** Jitsi host. Public `meet.jit.si` / `8x8.vc` are rejected.
+- `JITSI_JWT_APP_ID`
+- `JITSI_JWT_SECRET`
+- `JITSI_JWT_ISSUER` (optional if it matches the app id)
+
+Until those values are set, meeting records can be stored but live entry is disabled. Platform page authorization is not sufficient for conferencing privacy; the Jitsi host must reject unauthenticated room URLs.
 
 Never set `ENABLE_TEST_OTP_ENDPOINT=true` in production.

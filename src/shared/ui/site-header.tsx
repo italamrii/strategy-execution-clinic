@@ -118,13 +118,21 @@ export function SiteHeader({
           </button>
         </div>
         <nav>
-          {links.map(([href, label], index) => (
-            <Link key={href} href={href} onClick={() => setOpen(false)}>
-              <span className="numeric">0{index + 1}</span>
-              {label}
-              <i aria-hidden>↗</i>
-            </Link>
-          ))}
+          {links.map(([href, label], index) => {
+            const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={active ? "is-active" : undefined}
+                onClick={() => setOpen(false)}
+              >
+                <span className="numeric">0{index + 1}</span>
+                {label}
+                <i aria-hidden>↗</i>
+              </Link>
+            );
+          })}
         </nav>
         <div className="mobile-drawer__actions">
           <ThemeToggle />

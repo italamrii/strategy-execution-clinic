@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireLocale } from "@/i18n/locale";
 import { redirect as localeRedirect } from "@/i18n/navigation";
 import { resolvePageAccess } from "@/modules/identity";
-import { getMeetingForUser, MeetingError, usesDefaultPublicJitsi } from "@/modules/meetings";
+import { getMeetingForUser, MeetingError } from "@/modules/meetings";
 import { MeetingRoom } from "@/modules/meetings/ui/meeting-room";
 import { MeetingStatusActions } from "@/modules/meetings/ui/meeting-status-actions";
 import { AccessDenied } from "@/shared/ui/access-denied";
@@ -40,7 +40,6 @@ export default async function MeetingPage({
       <p className="eyebrow">SEC · MEET</p>
       <h1 className="mt-3 text-4xl text-ink">{meeting.title}</h1>
       <p className="mt-3 text-graphite">{t("deviceNote")}</p>
-      {usesDefaultPublicJitsi() ? <p className="mt-2 text-sm text-muted">{t("publicProviderNote")}</p> : null}
       <p className="mt-2 text-sm text-muted">{statusLabel}</p>
       <MeetingStatusActions
         meetingId={meeting.id}
@@ -48,12 +47,24 @@ export default async function MeetingPage({
         canComplete={meeting.canComplete}
         canCancel={meeting.canCancel}
       />
-      {meeting.embedUrl && meeting.status !== "cancelled" && meeting.status !== "completed" ? (
+      {meeting.setupRequired ? (
+        <div className="mt-8 border border-warning bg-surface p-6" role="status">
+          <h2 className="text-xl text-ink">{t("setupRequiredTitle")}</h2>
+          <p className="mt-2 text-graphite">
+            {meeting.consultationId ? t("setupRequiredPrivate") : t("setupRequired")}
+          </p>
+          <ul className="mt-3 list-disc ps-5 text-sm text-graphite">
+            {meeting.missingProviderConfig.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      ) : meeting.embedUrl && meeting.status !== "cancelled" && meeting.status !== "completed" ? (
         <MeetingRoom
           meetingId={meeting.id}
           title={meeting.title}
           embedUrl={meeting.embedUrl}
-          allowVideo={meeting.allowVideo}
+          startWithCameraOff={!meeting.allowVideo}
         />
       ) : (
         <p className="mt-8 rounded-2xl bg-stone p-6 text-graphite">{t("roomUnavailable")}</p>

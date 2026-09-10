@@ -19,6 +19,7 @@ const REQUIRED_PERMISSIONS = [
   "consultation.read.any",
   "consultation.manage",
   "meeting.read.own",
+  "meeting.create",
   "meeting.manage",
   "meeting.start",
   "card.read.own",

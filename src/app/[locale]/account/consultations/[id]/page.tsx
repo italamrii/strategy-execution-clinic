@@ -6,6 +6,7 @@ import { resolvePageAccess } from "@/modules/identity";
 import { ConsultationError, getConsultationForUser } from "@/modules/consultations";
 import { ConsultationThread } from "@/modules/consultations/ui/consultation-thread";
 import { MeetingCreateForm } from "@/modules/meetings/ui/meeting-create-form";
+import { meetingProviderSetup } from "@/modules/meetings";
 import { AccessDenied } from "@/shared/ui/access-denied";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,7 @@ export default async function ConsultationPage({
     data.request.assignedExpertUserId === access.auth.userId ||
     access.auth.permissions.includes("consultation.manage");
   const canSchedule = access.auth.permissions.includes("meeting.create") && canManage;
+  const provider = meetingProviderSetup();
   return (
     <main className="mx-auto max-w-4xl px-6 py-14">
       <p className="eyebrow">SEC · ADVISORY</p>
@@ -81,7 +83,13 @@ export default async function ConsultationPage({
         canFeedback={data.request.requesterUserId === access.auth.userId && data.request.status === "completed"}
         canClose={access.auth.permissions.includes("consultation.manage") && data.request.status === "completed"}
       />
-      {canSchedule ? <MeetingCreateForm consultationId={id} /> : null}
+      {canSchedule ? (
+        <MeetingCreateForm
+          consultationId={id}
+          providerReady={provider.secure}
+          missingConfig={provider.missing}
+        />
+      ) : null}
     </main>
   );
 }
