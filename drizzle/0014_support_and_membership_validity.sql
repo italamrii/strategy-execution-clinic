@@ -19,16 +19,22 @@ CREATE INDEX IF NOT EXISTS "support_requests_status_created_idx"
 CREATE INDEX IF NOT EXISTS "support_requests_category_status_idx"
   ON "support_requests" ("category", "status");
 
--- One-year default for untouched factory seed rows from 0011 only.
+-- One-year default for 0011 factory rows that still match the seed defaults.
 -- Does not overwrite administrator-configured lifetime policies.
 --
+-- Run the read-only preflight first:
+--   pnpm preflight:0014
+--   drizzle/0014_support_and_membership_validity.preflight.sql
+--
 -- Updated when all of the following are true:
---   id is a 0011 factory UUID
---   slug is a non-lifetime factory type
+--   id is a 0011 factory UUID listed below
 --   validity_mode is still the 0011 default ('lifetime')
 --   validity_days is still NULL
 --   renewal_required is still the 0011 default (false)
---   updated_at is within 5s of created_at (row was never saved again)
+--   updated_at is within 5s of created_at
+--
+-- The 5-second timestamp window is a conservative filter, not proof the row was never edited.
+-- Seed writes created_at and updated_at together, and an administrator save within 5 seconds would still match.
 --
 -- Affected factory rows:
 --   550e8400-e29b-41d4-a716-446655440002 expert_member

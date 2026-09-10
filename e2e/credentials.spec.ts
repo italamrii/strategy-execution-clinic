@@ -125,7 +125,7 @@ test.describe("credentials e2e", () => {
   });
 
   test("member credential wallet, exports, verification, and revoke", async ({ browser }) => {
-    test.setTimeout(180_000);
+    test.setTimeout(240_000);
     const memberEmail = `cred-member-${Date.now()}@clinic.test`;
     const adminEmail = `cred-admin-${Date.now()}@clinic.test`;
     const strangerEmail = `cred-stranger-${Date.now()}@clinic.test`;
@@ -255,7 +255,48 @@ test.describe("credentials e2e", () => {
     );
     expect(pngResponse.ok(), await pngResponse.text()).toBeTruthy();
     expect(pngResponse.headers()["content-type"]).toContain("image/png");
-    expect(pngResponse.headers()["content-disposition"] ?? "").toMatch(/sec-credential-/i);
+    expect(pngResponse.headers()["content-disposition"] ?? "").toMatch(/attachment;.*sec-credential-/i);
+
+    const embedResponse = await memberPage.request.get(
+      `/api/credentials/${credentialId}/export/png?locale=en&embed=1`,
+    );
+    expect(embedResponse.ok(), await embedResponse.text()).toBeTruthy();
+    expect(embedResponse.headers()["content-type"]).toContain("image/png");
+    expect(embedResponse.headers()["content-disposition"] ?? "").toMatch(/inline;.*sec-credential-/i);
+    expect((await embedResponse.body()).byteLength).toBeGreaterThan(2_000);
+
+    await memberPage.emulateMedia({ reducedMotion: "no-preference" });
+    await memberPage.setViewportSize({ width: 1440, height: 900 });
+    await memberPage.goto("/en/account/credential");
+    await expect(memberPage.getByTestId("membership-card")).toBeVisible({ timeout: 20_000 });
+    await expect(memberPage.getByTestId("public-code")).toBeVisible();
+    const card3d = memberPage.getByTestId("membership-card-3d-root");
+    await expect(card3d).toBeAttached({ timeout: 20_000 });
+    await expect
+      .poll(
+        async () =>
+          `${await card3d.getAttribute("data-3d-state")}|${await card3d.getAttribute("data-3d-reason")}`,
+        { timeout: 45_000 },
+      )
+      .toMatch(/^ready\|/);
+    const stage = memberPage.getByTestId("membership-card-3d");
+    await expect(stage.locator("canvas")).toBeVisible({ timeout: 15_000 });
+    const box = await stage.boundingBox();
+    expect(box, "3D stage has layout size").toBeTruthy();
+    await memberPage.mouse.move(box!.x + box!.width * 0.22, box!.y + box!.height * 0.28);
+    await memberPage.waitForTimeout(700);
+    await memberPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "credential-3d-tilt-en.png"),
+      fullPage: false,
+    });
+    await memberPage.getByTestId("membership-card-3d-flip").click();
+    await expect(card3d).toHaveAttribute("data-flipped", "true");
+    await memberPage.waitForTimeout(900);
+    await memberPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "credential-3d-flip-en.png"),
+      fullPage: false,
+    });
+    await expect(memberPage.getByTestId("membership-card")).toBeVisible();
 
     await expect(memberPage.getByRole("heading", { name: /Share membership/i })).toBeVisible();
     await expect(memberPage.getByRole("link", { name: /Share on LinkedIn/i })).toBeVisible();

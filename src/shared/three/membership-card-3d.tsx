@@ -1,56 +1,54 @@
 "use client";
 
-import { Canvas, useFrame } from "@react-three/fiber";
-import { ContactShadows, RoundedBox } from "@react-three/drei";
-import { useEffect, useRef, useState } from "react";
-import {
-  SRGBColorSpace,
-  Texture,
-  TextureLoader,
-  type Group,
-} from "three";
+import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 
-function CardMesh({
-  texture,
-  flipped,
-  tilt,
-}: {
-  texture: Texture;
-  flipped: boolean;
-  tilt: { x: number; y: number };
-}) {
-  const group = useRef<Group>(null);
+const Canvas = lazy(async () => {
+  const mod = await import("./membership-card-3d-canvas");
+  return { default: mod.MembershipCard3DCanvas };
+});
 
-  useFrame(() => {
-    if (!group.current) return;
-    group.current.rotation.x += (tilt.x - group.current.rotation.x) * 0.12;
-    const targetY = flipped ? Math.PI + tilt.y : tilt.y;
-    group.current.rotation.y += (targetY - group.current.rotation.y) * 0.12;
-  });
+type StageState = "pending" | "ready" | "skipped" | "error";
 
-  return (
-    <group ref={group}>
-      <mesh position={[0, 0, 0.03]}>
-        <planeGeometry args={[3.2, 2]} />
-        <meshPhysicalMaterial
-          map={texture}
-          roughness={0.28}
-          metalness={0.12}
-          clearcoat={0.28}
-          clearcoatRoughness={0.45}
-        />
-      </mesh>
-      <mesh position={[0, 0, -0.03]} rotation={[0, Math.PI, 0]}>
-        <RoundedBox args={[3.2, 2, 0.05]} radius={0.05} smoothness={4}>
-          <meshPhysicalMaterial color="#0B1D33" roughness={0.32} metalness={0.18} />
-        </RoundedBox>
-      </mesh>
-      <mesh position={[0, 0, -0.06]} rotation={[0, Math.PI, 0]}>
-        <planeGeometry args={[2.6, 0.08]} />
-        <meshBasicMaterial color="#C4A574" />
-      </mesh>
-    </group>
-  );
+function probeWebGl() {
+  try {
+    const canvas = document.createElement("canvas");
+    return Boolean(canvas.getContext("webgl2") || canvas.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
+
+async function loadCardPngUrl(credentialId: string, locale: "ar" | "en") {
+  const url = `/api/credentials/${encodeURIComponent(credentialId)}/export/png?locale=${locale}&embed=1`;
+  const response = await fetch(url, { credentials: "include" });
+  if (!response.ok) {
+    throw new Error(`card png ${response.status}`);
+  }
+  const blob = await response.blob();
+  if (blob.size < 1_000) {
+    throw new Error("card png empty");
+  }
+  return URL.createObjectURL(blob);
+}
+
+class CanvasErrorBoundary extends Component<
+  { children: ReactNode; onError: (message: string) => void },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    this.props.onError(error instanceof Error ? error.message : "webgl-render");
+  }
+
+  render() {
+    if (this.state.failed) return null;
+    return this.props.children;
+  }
 }
 
 export function MembershipCard3D({
@@ -66,53 +64,57 @@ export function MembershipCard3D({
   hint: string;
   flipLabel: string;
 }) {
-  const [texture, setTexture] = useState<Texture | null>(null);
+  const [state, setState] = useState<StageState>("pending");
+  const [reason, setReason] = useState("");
+  const [pngUrl, setPngUrl] = useState<string | null>(null);
   const [flipped, setFlipped] = useState(false);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
     const narrow = window.matchMedia("(max-width: 767px)");
-    const probe = document.createElement("canvas");
-    const gl = probe.getContext("webgl") || probe.getContext("webgl2");
     let cancelled = false;
-    let loaded: Texture | null = null;
+    let objectUrl: string | null = null;
+
+    const fail = (next: StageState, nextReason: string) => {
+      if (cancelled) return;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrl = null;
+      }
+      setPngUrl(null);
+      setState(next);
+      setReason(nextReason);
+    };
 
     const load = () => {
       if (cancelled) return;
-      if (reduced.matches || narrow.matches || !gl) {
-        setTexture(null);
+      if (reduced.matches) {
+        fail("skipped", "reduced-motion");
         return;
       }
-      const url = `/api/credentials/${encodeURIComponent(credentialId)}/export/png?locale=${locale}`;
-      void fetch(url, { credentials: "include" })
-        .then((response) => (response.ok ? response.blob() : Promise.reject(new Error("card png"))))
-        .then((blob) => {
-          if (cancelled) return;
-          const objectUrl = URL.createObjectURL(blob);
-          const loader = new TextureLoader();
-          loader.load(
-            objectUrl,
-            (next) => {
-              URL.revokeObjectURL(objectUrl);
-              if (cancelled) {
-                next.dispose();
-                return;
-              }
-              next.colorSpace = SRGBColorSpace;
-              next.anisotropy = 8;
-              loaded = next;
-              setTexture(next);
-            },
-            undefined,
-            () => {
-              URL.revokeObjectURL(objectUrl);
-              if (!cancelled) setTexture(null);
-            },
-          );
+      if (narrow.matches) {
+        fail("skipped", "narrow-viewport");
+        return;
+      }
+      if (!probeWebGl()) {
+        fail("error", "webgl-unavailable");
+        return;
+      }
+      setState("pending");
+      setReason("png-loading");
+      void loadCardPngUrl(credentialId, locale)
+        .then((nextUrl) => {
+          if (cancelled) {
+            URL.revokeObjectURL(nextUrl);
+            return;
+          }
+          objectUrl = nextUrl;
+          setPngUrl(nextUrl);
+          setReason("webgl-init");
         })
-        .catch(() => {
-          if (!cancelled) setTexture(null);
+        .catch((error: unknown) => {
+          fail("error", error instanceof Error ? error.message : "card png");
         });
     };
 
@@ -123,17 +125,33 @@ export function MembershipCard3D({
       cancelled = true;
       reduced.removeEventListener("change", load);
       narrow.removeEventListener("change", load);
-      loaded?.dispose();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [credentialId, locale]);
 
-  if (!texture) return null;
+  if (state === "skipped" || state === "error" || !pngUrl) {
+    return (
+      <div
+        className="sr-only"
+        data-testid="membership-card-3d-root"
+        data-3d-state={state}
+        data-3d-reason={reason}
+      />
+    );
+  }
 
   return (
-    <div className="membership-card-3d mx-auto w-full max-w-xl">
+    <div
+      className="membership-card-3d mx-auto w-full max-w-xl"
+      data-testid="membership-card-3d-root"
+      data-3d-state={state}
+      data-3d-reason={reason}
+      data-flipped={flipped ? "true" : "false"}
+    >
       <p className="mb-3 text-center text-sm text-muted">{hint}</p>
       <div
-        className="relative aspect-[1.6/1] w-full"
+        className="relative w-full"
+        style={{ minHeight: "20rem", height: "20rem" }}
         role="img"
         aria-label={ariaLabel}
         data-testid="membership-card-3d"
@@ -145,23 +163,35 @@ export function MembershipCard3D({
         }}
         onPointerLeave={() => setTilt({ x: 0, y: 0 })}
       >
-        <Canvas
-          camera={{ position: [0, 0, 4.6], fov: 32 }}
-          dpr={[1, 1.5]}
-          className="!h-full !w-full"
-          gl={{ alpha: true, antialias: true }}
-          aria-hidden
+        <CanvasErrorBoundary
+          onError={(message) => {
+            setState("error");
+            setReason(message);
+            setPngUrl(null);
+          }}
         >
-          <ambientLight intensity={0.7} />
-          <directionalLight position={[3, 4, 5]} intensity={1.05} />
-          <directionalLight position={[-3, 1, 2]} intensity={0.35} />
-          <CardMesh texture={texture} flipped={flipped} tilt={tilt} />
-          <ContactShadows position={[0, -1.25, 0]} opacity={0.22} scale={8} blur={2.4} />
-        </Canvas>
+          <Suspense fallback={null}>
+            <Canvas
+              pngUrl={pngUrl}
+              flipped={flipped}
+              tilt={tilt}
+              onReady={() => {
+                setState("ready");
+                setReason("");
+              }}
+              onError={(message) => {
+                setState("error");
+                setReason(message);
+                setPngUrl(null);
+              }}
+            />
+          </Suspense>
+        </CanvasErrorBoundary>
       </div>
       <button
         type="button"
         className="mx-auto mt-3 block min-h-11 border border-line px-4 text-sm text-ink"
+        data-testid="membership-card-3d-flip"
         onClick={() => setFlipped((value) => !value)}
       >
         {flipLabel}

@@ -77,10 +77,11 @@ export async function GET(
       return NextResponse.json({ error: "unsupported_format" }, { status: 400 });
     }
 
+    const embed = url.searchParams.get("embed") === "1";
     return new NextResponse(new Uint8Array(body), {
       headers: {
         "Content-Type": mime,
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": `${embed && mime === "image/png" ? "inline" : "attachment"}; filename="${filename}"`,
         "Cache-Control": "private, max-age=60",
       },
     });

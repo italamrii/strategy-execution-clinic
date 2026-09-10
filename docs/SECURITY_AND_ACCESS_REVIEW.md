@@ -161,6 +161,6 @@ Optional (required for live private meeting entry):
 - `JITSI_JWT_SECRET`
 - `JITSI_JWT_ISSUER` (optional if it matches the app id)
 
-Until those values are set, meeting records can be stored but live entry is disabled. Platform page authorization is not sufficient for conferencing privacy; the Jitsi host must reject unauthenticated room URLs.
+Until those values are set **and** the provider probe verifies tokenAuth (External API present, no `anonymousdomain`, unauthenticated BOSH rejected), meeting records can be stored but live entry is disabled. The client delivers the JWT through the documented `JitsiMeetExternalAPI` `jwt` option. Platform page authorization is not sufficient for conferencing privacy; the Jitsi host must reject unauthenticated room URLs.
 
 Never set `ENABLE_TEST_OTP_ENDPOINT=true` in production.

@@ -6,6 +6,18 @@ const sql = readFileSync(
   path.resolve(process.cwd(), "drizzle/0014_support_and_membership_validity.sql"),
   "utf8",
 );
+const preflight = readFileSync(
+  path.resolve(process.cwd(), "drizzle/0014_support_and_membership_validity.preflight.sql"),
+  "utf8",
+);
+
+function factoryWhereClause(source: string) {
+  const match = source.match(
+    /"id" IN \(\s*'550e8400-e29b-41d4-a716-446655440002',[\s\S]*?interval '5 seconds'/,
+  );
+  expect(match, "factory WHERE clause").toBeTruthy();
+  return match![0].replace(/\s+/g, " ");
+}
 
 describe("migration 0014 membership validity", () => {
   it("updates only verified 0011 factory default rows", () => {
@@ -22,5 +34,14 @@ describe("migration 0014 membership validity", () => {
     expect(updateBlock).not.toContain("550e8400-e29b-41d4-a716-446655440001");
     expect(updateBlock).not.toContain("550e8400-e29b-41d4-a716-446655440008");
     expect(updateBlock).not.toContain("550e8400-e29b-41d4-a716-446655440009");
+  });
+
+  it("ships a read-only preflight query with the same WHERE as the UPDATE", () => {
+    expect(preflight).toMatch(/^\s*-- Read-only/i);
+    const uncommented = preflight.replace(/--.*$/gm, "");
+    expect(uncommented).not.toMatch(/\b(UPDATE|INSERT|DELETE|ALTER|DROP)\b/i);
+    expect(factoryWhereClause(preflight)).toBe(factoryWhereClause(sql));
+    expect(sql).not.toMatch(/never saved again/i);
+    expect(sql).toMatch(/not proof the row was never edited/i);
   });
 });

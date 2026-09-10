@@ -1,10 +1,17 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { signJitsiJwt } from "./jitsi-jwt";
+import {
+  jitsiExternalApiOptions,
+  jitsiExternalApiScriptUrl,
+} from "./jitsi-external-api";
+import { verifyJitsiProviderAuth } from "./probe";
 import {
   canEnterPrivateConsultationMeeting,
   meetingProviderSetup,
 } from "./provider";
-import { meetingEmbedUrl } from "./service";
+import { buildMeetingJoinSession } from "./service";
 
 function clearJitsiEnv() {
   delete process.env.JITSI_DOMAIN;
@@ -53,14 +60,13 @@ describe("meeting provider setup", () => {
     expect(setup.missing).toEqual(expect.arrayContaining(["JITSI_JWT_APP_ID", "JITSI_JWT_SECRET"]));
   });
 
-  it("is secure only with a private HTTPS host and JWT credentials", () => {
+  it("treats env credentials as incomplete until the provider probe verifies tokenAuth", () => {
     process.env.JITSI_DOMAIN = "https://meet.clinic.example";
     process.env.JITSI_JWT_APP_ID = "clinic";
     process.env.JITSI_JWT_SECRET = "super-secret";
     const setup = meetingProviderSetup();
     expect(setup.secure).toBe(true);
     expect(setup.host).toBe("meet.clinic.example");
-    expect(canEnterPrivateConsultationMeeting()).toBe(true);
   });
 });
 
@@ -90,33 +96,106 @@ describe("Jitsi JWT room scoping", () => {
   });
 });
 
-describe("meeting embed security", () => {
-  it("does not emit a public Jitsi URL when the provider is not configured", () => {
-    expect(() => meetingEmbedUrl("sec-room-key")).toThrow(/provider_misconfigured/);
-  });
-
-  it("issues a room-scoped JWT on a private host and never uses meet.jit.si", () => {
+describe("JitsiMeetExternalAPI jwt option", () => {
+  it("does not construct an iframe src with jwt in the fragment", () => {
     process.env.JITSI_DOMAIN = "https://meet.clinic.example";
     process.env.JITSI_JWT_APP_ID = "clinic";
     process.env.JITSI_JWT_SECRET = "super-secret";
-    const url = meetingEmbedUrl("sec-room-key", {
+    const session = buildMeetingJoinSession("sec-room-key", {
       userId: "user-1",
       displayName: "Ada",
       moderator: true,
     });
-    expect(url.startsWith("https://meet.clinic.example/sec-room-key#")).toBe(true);
-    expect(url).not.toContain("meet.jit.si");
-    expect(url).toContain("jwt=");
-    expect(url).toContain("config.fileRecordingsEnabled=false");
-    expect(url).toContain("config.liveStreamingEnabled=false");
-    expect(url).not.toContain("@");
-    expect(url).not.toContain("email=");
-    const jwt = new URLSearchParams(url.split("#")[1]).get("jwt");
-    expect(jwt).toBeTruthy();
-    const payload = decodeJwtPayload(jwt!);
+    const options = jitsiExternalApiOptions(session, { startWithCameraOff: true, lang: "en" });
+    expect(jitsiExternalApiScriptUrl(session.origin)).toBe(
+      "https://meet.clinic.example/external_api.js",
+    );
+    expect(options.jwt).toBe(session.jwt);
+    expect(options.roomName).toBe("sec-room-key");
+    expect(JSON.stringify(options)).not.toContain("#jwt=");
+    expect(JSON.stringify(options)).not.toContain("meet.jit.si");
+    expect(options.configOverwrite.startWithVideoMuted).toBe(true);
+    const payload = decodeJwtPayload(options.jwt);
     expect(payload.room).toBe("sec-room-key");
     expect(payload.sub).toBe("meet.clinic.example");
     expect(payload.aud).toBe("clinic");
     expect(payload.context.user.id).toBe("user-1");
+  });
+
+  it("loads JitsiMeetExternalAPI instead of constructing an iframe src", () => {
+    const source = readFileSync(
+      path.resolve(process.cwd(), "src/modules/meetings/ui/meeting-room.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("new JitsiMeetExternalAPI");
+    expect(source).toContain("jitsiExternalApiOptions");
+    expect(source).not.toMatch(/iframe/i);
+    expect(source).not.toMatch(/#jwt=/);
+  });
+
+  it("throws before minting a session when the provider env is incomplete", () => {
+    expect(() =>
+      buildMeetingJoinSession("sec-room-key", {
+        userId: "user-1",
+        displayName: "Ada",
+        moderator: false,
+      }),
+    ).toThrow(/provider_misconfigured/);
+  });
+});
+
+describe("Jitsi provider auth probe", () => {
+  it("is unverified when unsigned guests or anonymous BOSH succeed", async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/external_api.js")) {
+        return new Response("function JitsiMeetExternalAPI(){}", { status: 200 });
+      }
+      if (url.endsWith("/config.js")) {
+        return new Response("var config = { anonymousdomain: 'guest.meet.test' };", { status: 200 });
+      }
+      if (url.endsWith("/http-bind") && init?.method === "POST") {
+        return new Response("<body sid='abc123' xmlns='http://jabber.org/protocol/httpbind'></body>", {
+          status: 200,
+        });
+      }
+      return new Response("missing", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const probe = await verifyJitsiProviderAuth(
+      "https://meet.clinic.example",
+      "meet.clinic.example",
+      fetchImpl,
+    );
+    expect(probe.verified).toBe(false);
+    expect(probe.reasons.some((reason) => reason.includes("anonymousdomain"))).toBe(true);
+    expect(probe.reasons.some((reason) => reason.includes("Unauthenticated BOSH"))).toBe(true);
+  });
+
+  it("is verified when External API is present and anonymous BOSH is rejected", async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/external_api.js")) {
+        return new Response("class JitsiMeetExternalAPI {}", { status: 200 });
+      }
+      if (url.endsWith("/config.js")) {
+        return new Response("var config = { hosts: { domain: 'meet.clinic.example' } };", {
+          status: 200,
+        });
+      }
+      if (url.endsWith("/http-bind") && init?.method === "POST") {
+        expect(String(init.body ?? "")).not.toContain("jwt");
+        return new Response("<failure><not-authorized/></failure>", { status: 401 });
+      }
+      return new Response("missing", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const probe = await verifyJitsiProviderAuth(
+      "https://meet.clinic.example",
+      "meet.clinic.example",
+      fetchImpl,
+    );
+    expect(probe.verified).toBe(true);
+    expect(probe.reasons).toEqual([]);
   });
 });

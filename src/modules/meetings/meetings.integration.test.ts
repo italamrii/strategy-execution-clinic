@@ -136,14 +136,12 @@ describe("meetings access integration", () => {
     });
 
     const forExpert = await getMeetingForUser(expertId, created.id);
-    expect(forExpert.embedUrl).toBeNull();
+    expect(forExpert.joinSession).toBeNull();
     expect(forExpert.setupRequired).toBe(true);
     expect(forExpert.missingProviderConfig.length).toBeGreaterThan(0);
-    expect(forExpert.embedUrl ?? "").not.toContain("meet.jit.si");
-    expect(String(forExpert.roomKey)).not.toContain("meet.jit.si");
 
     const forMember = await getMeetingForUser(memberId, created.id);
-    expect(forMember.embedUrl).toBeNull();
+    expect(forMember.joinSession).toBeNull();
     expect(forMember.setupRequired).toBe(true);
 
     await expect(getMeetingForUser(strangerId, created.id)).rejects.toBeInstanceOf(MeetingError);
@@ -152,7 +150,7 @@ describe("meetings access integration", () => {
     });
   });
 
-  it("issues a room-scoped join URL only after private JWT setup, still denying strangers", async () => {
+  it("keeps join disabled when JWT env is set but the provider auth probe cannot verify tokenAuth", async () => {
     process.env.JITSI_DOMAIN = "https://meet.clinic.example";
     process.env.JITSI_JWT_APP_ID = "clinic";
     process.env.JITSI_JWT_SECRET = "super-secret";
@@ -163,15 +161,9 @@ describe("meetings access integration", () => {
       startsAt: new Date(Date.now() + 120_000),
     });
     const forHost = await getMeetingForUser(adminId, created.id);
-    expect(forHost.setupRequired).toBe(false);
-    expect(forHost.embedUrl).toMatch(/^https:\/\/meet\.clinic\.example\//);
-    expect(forHost.embedUrl).toContain("jwt=");
-    expect(forHost.embedUrl).not.toContain("meet.jit.si");
-    const jwt = new URLSearchParams(forHost.embedUrl!.split("#")[1]).get("jwt");
-    const payload = JSON.parse(Buffer.from(jwt!.split(".")[1]!, "base64url").toString("utf8")) as {
-      room: string;
-    };
-    expect(payload.room).toBe(forHost.roomKey);
+    expect(forHost.setupRequired).toBe(true);
+    expect(forHost.joinSession).toBeNull();
+    expect(forHost.missingProviderConfig.length).toBeGreaterThan(0);
 
     await expect(getMeetingForUser(strangerId, created.id)).rejects.toMatchObject({
       code: "forbidden",

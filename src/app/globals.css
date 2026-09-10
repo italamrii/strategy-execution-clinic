@@ -406,8 +406,7 @@ body:has(.member-shell) .site-footer {
 
 @media (prefers-reduced-motion: reduce) {
   .hero-scene,
-  .track-depth::before,
-  .membership-card-3d {
+  .track-depth::before {
     display: none;
   }
   .theme-toggle,

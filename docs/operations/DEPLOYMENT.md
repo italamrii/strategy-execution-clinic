@@ -81,8 +81,9 @@ Private consultation entry requires all of:
 - `JITSI_DOMAIN` — HTTPS origin of a **private** Jitsi host. `meet.jit.si` is rejected because anyone with the room URL can join.
 - `JITSI_JWT_APP_ID` and `JITSI_JWT_SECRET` — Jitsi token plugin credentials. The app issues a short-lived, room-scoped JWT only to authorized participants.
 - Optional `JITSI_JWT_ISSUER` if it differs from the app id.
+- A successful provider probe: `/external_api.js` serves `JitsiMeetExternalAPI`, `config.js` does not advertise `anonymousdomain`, and an unauthenticated BOSH bind to `/http-bind` is rejected.
 
-Until those values are set, the platform still stores scheduled meetings but **does not render a joinable room**. The meeting page shows a setup-required state listing the missing variables.
+Env JWT values alone do not open live entry. Until the probe verifies tokenAuth, the platform still stores scheduled meetings but **does not render a joinable room**. The client passes the token as the documented `JitsiMeetExternalAPI` `jwt` option, not as a URL the app concatenates.
 
 The conferencing host must enable JWT authentication (`tokenAuth` / `asap_accepted_*`). A bare `/room` URL without a JWT must be rejected by the provider; platform page authorization alone is not enough.
 
@@ -90,11 +91,13 @@ The conferencing host must enable JWT authentication (`tokenAuth` / `asap_accept
 
 `drizzle/0014_support_and_membership_validity.sql` is new in this release (production at `8ca08cf` has not applied it).
 
-It creates `support_requests`, then updates membership validity **only** for untouched 0011 factory rows:
+It creates `support_requests`, then updates membership validity **only** for 0011 factory rows that still match the UPDATE WHERE clause.
+
+Run the read-only listing first: `pnpm preflight:0014`. That SELECT uses the same WHERE as the UPDATE and prints exactly which membership types would change.
 
 | UUID | Slug | Result |
 | --- | --- | --- |
-| `…440002`–`…440007` | expert, professional, contributor, volunteer, volunteer leader, distinguished volunteer | 1-year (`fixed_days` / 365) **if** the row is still the 0011 default (`lifetime`, `validity_days` NULL, `renewal_required` false, `updated_at` within 5s of `created_at`) |
+| `…440002`–`…440007` | expert, professional, contributor, volunteer, volunteer leader, distinguished volunteer | 1-year (`fixed_days` / 365) **if** the row still has `lifetime`, `validity_days` NULL, `renewal_required` false, and `updated_at` within 5s of `created_at` |
 | `…440001`, `…440008`, `…440009` | founding member, strategic partner, institutional member | not updated |
 
-Administrator-edited types are skipped because a later `updated_at` or a customized validity policy fails the WHERE clause. New types created after 0011 follow application defaults in `seedMembershipCatalog` / catalog writes, not this UPDATE.
+The 5-second `updated_at` window is a conservative filter for likely-unedited seed rows. It is not proof a row was never edited: seed sets both timestamps together, and an administrator save within 5 seconds would still match. Rows with a customized validity policy or a later `updated_at` are skipped. New types created after 0011 follow application defaults in `seedMembershipCatalog` / catalog writes, not this UPDATE.

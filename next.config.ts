@@ -45,7 +45,7 @@ const securityHeaders = [
       "img-src 'self' data: blob: " + clerkImg,
       "font-src 'self'",
       "style-src 'self' 'unsafe-inline'",
-      scriptSrc,
+      scriptSrc + (meetingOrigin ? ` ${meetingOrigin}` : ""),
       `connect-src 'self' ${clerkConnect}${meetingOrigin ? ` ${meetingOrigin} wss://${new URL(meetingOrigin).host}` : ""}`,
       "worker-src 'self' blob:",
       `frame-src 'self' ${clerkFrame}${meetingOrigin ? ` ${meetingOrigin}` : ""}`,

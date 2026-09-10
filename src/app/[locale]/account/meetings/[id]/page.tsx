@@ -59,12 +59,13 @@ export default async function MeetingPage({
             ))}
           </ul>
         </div>
-      ) : meeting.embedUrl && meeting.status !== "cancelled" && meeting.status !== "completed" ? (
+      ) : meeting.joinSession && meeting.status !== "cancelled" && meeting.status !== "completed" ? (
         <MeetingRoom
           meetingId={meeting.id}
-          title={meeting.title}
-          embedUrl={meeting.embedUrl}
+          session={meeting.joinSession}
           startWithCameraOff={!meeting.allowVideo}
+          lang={locale}
+          connectionFailedLabel={t("connectionFailed")}
         />
       ) : (
         <p className="mt-8 rounded-2xl bg-stone p-6 text-graphite">{t("roomUnavailable")}</p>
