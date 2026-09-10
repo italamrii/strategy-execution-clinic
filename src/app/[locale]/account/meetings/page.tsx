@@ -54,7 +54,7 @@ export default async function MeetingsPage({
       {canCreate ? (
         <MeetingCreateForm
           providerReady={provider.ready}
-          missingConfig={[...new Set([...provider.setup.missing, ...provider.probe.reasons])]}
+          missingConfig={provider.blockers}
         />
       ) : null}
     </main>

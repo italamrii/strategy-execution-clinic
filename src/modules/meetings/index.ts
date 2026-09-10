@@ -10,7 +10,8 @@ export {
   usesDefaultPublicJitsi,
   meetingProviderSetup,
   canEnterPrivateConsultationMeeting,
+  isJitsiOperatorVerified,
 } from "./service";
 export type { MeetingJoinSession } from "./jitsi-external-api";
 export { jitsiExternalApiOptions, jitsiExternalApiScriptUrl } from "./jitsi-external-api";
-export { verifyJitsiProviderAuth } from "./probe";
+export { probeJitsiHost } from "./probe";

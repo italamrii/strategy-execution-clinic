@@ -9,30 +9,35 @@ import { consultationRequests, meetingParticipants, meetingRooms, profiles } fro
 import { MeetingError } from "./errors";
 import { signJitsiJwt } from "./jitsi-jwt";
 import type { MeetingJoinSession } from "./jitsi-external-api";
-import { verifyJitsiProviderAuth, type JitsiAuthProbe } from "./probe";
 import {
   canEnterPrivateConsultationMeeting,
+  isJitsiOperatorVerified,
+  JITSI_OPERATOR_VERIFIED_REQUIREMENT,
   meetingProviderSetup,
   usesDefaultPublicJitsi,
 } from "./provider";
 
-export { canEnterPrivateConsultationMeeting, meetingProviderSetup, usesDefaultPublicJitsi };
+export {
+  canEnterPrivateConsultationMeeting,
+  isJitsiOperatorVerified,
+  meetingProviderSetup,
+  usesDefaultPublicJitsi,
+};
 export type { MeetingJoinSession };
 
-export async function resolveMeetingProviderReadiness(
-  env: NodeJS.ProcessEnv = process.env,
-  fetchImpl: typeof fetch = fetch,
-) {
+export function resolveMeetingProviderReadiness(env: NodeJS.ProcessEnv = process.env) {
   const setup = meetingProviderSetup(env);
-  if (!setup.secure || !setup.origin || !setup.host) {
-    return {
-      ready: false,
-      setup,
-      probe: { verified: false, reasons: setup.missing } satisfies JitsiAuthProbe,
-    };
-  }
-  const probe = await verifyJitsiProviderAuth(setup.origin, setup.host, fetchImpl);
-  return { ready: probe.verified, setup, probe };
+  const operatorVerified = isJitsiOperatorVerified(env);
+  const blockers = [
+    ...setup.missing,
+    ...(operatorVerified ? [] : [JITSI_OPERATOR_VERIFIED_REQUIREMENT]),
+  ];
+  return {
+    ready: setup.secure && operatorVerified,
+    setup,
+    operatorVerified,
+    blockers,
+  };
 }
 
 export function buildMeetingJoinSession(
@@ -41,7 +46,7 @@ export function buildMeetingJoinSession(
   env: NodeJS.ProcessEnv = process.env,
 ): MeetingJoinSession {
   const setup = meetingProviderSetup(env);
-  if (!setup.secure || !setup.origin || !setup.host) {
+  if (!setup.secure || !setup.origin || !setup.host || !isJitsiOperatorVerified(env)) {
     throw new MeetingError("provider_misconfigured");
   }
   return {
@@ -175,9 +180,7 @@ export async function getMeetingForUser(userId: string, meetingId: string) {
     ...meeting,
     joinSession,
     setupRequired,
-    missingProviderConfig: setupRequired
-      ? [...new Set([...readiness.setup.missing, ...readiness.probe.reasons])]
-      : [],
+    missingProviderConfig: setupRequired ? readiness.blockers : [],
     participantRole: participant?.role ?? null,
     canStart,
     canComplete: meeting.status === "live" && canManageLifecycle,

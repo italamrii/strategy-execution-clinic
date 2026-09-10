@@ -87,7 +87,7 @@ export default async function ConsultationPage({
         <MeetingCreateForm
           consultationId={id}
           providerReady={provider.ready}
-          missingConfig={[...new Set([...provider.setup.missing, ...provider.probe.reasons])]}
+          missingConfig={provider.blockers}
         />
       ) : null}
     </main>

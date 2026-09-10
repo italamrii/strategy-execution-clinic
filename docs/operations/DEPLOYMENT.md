@@ -76,16 +76,22 @@ Document each release migration compatibility in `docs/operations/RELEASE.md`.
 
 ## Audio/video meetings
 
-Private consultation entry requires all of:
+Private consultation entry requires **both**:
 
-- `JITSI_DOMAIN` — HTTPS origin of a **private** Jitsi host. `meet.jit.si` is rejected because anyone with the room URL can join.
-- `JITSI_JWT_APP_ID` and `JITSI_JWT_SECRET` — Jitsi token plugin credentials. The app issues a short-lived, room-scoped JWT only to authorized participants.
-- Optional `JITSI_JWT_ISSUER` if it differs from the app id.
-- A successful provider probe: `/external_api.js` serves `JitsiMeetExternalAPI`, `config.js` does not advertise `anonymousdomain`, and an unauthenticated BOSH bind to `/http-bind` is rejected.
+- Valid private-host configuration: `JITSI_DOMAIN` (HTTPS origin; `meet.jit.si` / `8x8.vc` are rejected), `JITSI_JWT_APP_ID`, `JITSI_JWT_SECRET`, and optional `JITSI_JWT_ISSUER`.
+- `JITSI_OPERATOR_VERIFIED=YES` — an explicit server-side flag. Any other value leaves live entry disabled.
 
-Env JWT values alone do not open live entry. Until the probe verifies tokenAuth, the platform still stores scheduled meetings but **does not render a joinable room**. The client passes the token as the documented `JitsiMeetExternalAPI` `jwt` option, not as a URL the app concatenates.
+Configuration or a successful host probe cannot open rooms by themselves. The rest of the platform does not require a Jitsi host; meetings can still be scheduled and stored.
 
-The conferencing host must enable JWT authentication (`tokenAuth` / `asap_accepted_*`). A bare `/room` URL without a JWT must be rejected by the provider; platform page authorization alone is not enough.
+The in-app probe (`probeJitsiHost`) is a connectivity/configuration diagnostic only. It does **not** attest JWT enforcement. HTTP 401/403, XMPP `item-not-found`, and `policy-violation` are inconclusive.
+
+Set `JITSI_OPERATOR_VERIFIED=YES` only after testing the **real** host:
+
+1. A valid room-scoped token succeeds.
+2. Missing, invalid, expired, and wrong-room tokens fail.
+3. Opening the room URL directly cannot bypass authentication.
+
+The client then delivers the token as the documented `JitsiMeetExternalAPI` `jwt` option. Platform page authorization is not enough for conferencing privacy.
 
 ## Migration 0014
 

@@ -43,6 +43,7 @@ test.describe("private meeting restrictions", () => {
     await expect(hostPage.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(hostPage.getByText(/Start with camera off/i)).toBeVisible();
     await expect(hostPage.getByText("JITSI_JWT_APP_ID")).toBeVisible();
+    await expect(hostPage.getByText("JITSI_OPERATOR_VERIFIED")).toBeVisible();
 
     const start = new Date(Date.now() + 3_600_000);
     const pad = (value: number) => String(value).padStart(2, "0");

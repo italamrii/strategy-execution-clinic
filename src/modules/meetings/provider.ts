@@ -1,5 +1,13 @@
 const PUBLIC_JITSI_HOSTS = new Set(["meet.jit.si", "8x8.vc"]);
 
+export const JITSI_OPERATOR_VERIFIED_VALUE = "YES";
+export const JITSI_OPERATOR_VERIFIED_REQUIREMENT =
+  "JITSI_OPERATOR_VERIFIED=YES (set only after testing the real host)";
+
+export function isJitsiOperatorVerified(env: NodeJS.ProcessEnv = process.env) {
+  return env.JITSI_OPERATOR_VERIFIED?.trim() === JITSI_OPERATOR_VERIFIED_VALUE;
+}
+
 export type MeetingProviderSetup = {
   secure: boolean;
   host: string | null;
@@ -46,5 +54,5 @@ export function usesDefaultPublicJitsi(env: NodeJS.ProcessEnv = process.env) {
 export function canEnterPrivateConsultationMeeting(
   env: NodeJS.ProcessEnv = process.env,
 ) {
-  return meetingProviderSetup(env).secure;
+  return meetingProviderSetup(env).secure && isJitsiOperatorVerified(env);
 }

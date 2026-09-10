@@ -21,6 +21,7 @@ function clearJitsiEnv() {
   delete process.env.JITSI_JWT_APP_ID;
   delete process.env.JITSI_JWT_SECRET;
   delete process.env.JITSI_JWT_ISSUER;
+  delete process.env.JITSI_OPERATOR_VERIFIED;
 }
 
 async function createUser(email: string) {
@@ -150,7 +151,7 @@ describe("meetings access integration", () => {
     });
   });
 
-  it("keeps join disabled when JWT env is set but the provider auth probe cannot verify tokenAuth", async () => {
+  it("keeps join disabled when JWT configuration is set without the operator flag", async () => {
     process.env.JITSI_DOMAIN = "https://meet.clinic.example";
     process.env.JITSI_JWT_APP_ID = "clinic";
     process.env.JITSI_JWT_SECRET = "super-secret";
@@ -163,7 +164,44 @@ describe("meetings access integration", () => {
     const forHost = await getMeetingForUser(adminId, created.id);
     expect(forHost.setupRequired).toBe(true);
     expect(forHost.joinSession).toBeNull();
-    expect(forHost.missingProviderConfig.length).toBeGreaterThan(0);
+    expect(forHost.missingProviderConfig.some((item) => item.includes("JITSI_OPERATOR_VERIFIED"))).toBe(
+      true,
+    );
+
+    await expect(getMeetingForUser(strangerId, created.id)).rejects.toMatchObject({
+      code: "forbidden",
+    });
+  });
+
+  it("keeps join disabled when the operator flag is set without JWT configuration", async () => {
+    process.env.JITSI_OPERATOR_VERIFIED = "YES";
+    const created = await createMeeting({
+      actorUserId: adminId,
+      title: "Flag without host",
+      startsAt: new Date(Date.now() + 120_000),
+    });
+    const forHost = await getMeetingForUser(adminId, created.id);
+    expect(forHost.joinSession).toBeNull();
+    expect(forHost.setupRequired).toBe(true);
+    expect(forHost.missingProviderConfig.some((item) => item.includes("JITSI_DOMAIN"))).toBe(true);
+  });
+
+  it("mints a join session only when configuration and the operator flag are both set", async () => {
+    process.env.JITSI_DOMAIN = "https://meet.clinic.example";
+    process.env.JITSI_JWT_APP_ID = "clinic";
+    process.env.JITSI_JWT_SECRET = "super-secret";
+    process.env.JITSI_OPERATOR_VERIFIED = "YES";
+
+    const created = await createMeeting({
+      actorUserId: adminId,
+      title: "Operator-verified room",
+      startsAt: new Date(Date.now() + 120_000),
+    });
+    const forHost = await getMeetingForUser(adminId, created.id);
+    expect(forHost.setupRequired).toBe(false);
+    expect(forHost.joinSession?.jwt).toBeTruthy();
+    expect(forHost.joinSession?.roomName).toMatch(/^sec-/);
+    expect(forHost.joinSession?.origin).toBe("https://meet.clinic.example");
 
     await expect(getMeetingForUser(strangerId, created.id)).rejects.toMatchObject({
       code: "forbidden",

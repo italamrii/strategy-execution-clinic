@@ -1,7 +1,14 @@
-export type JitsiAuthProbe = {
-  verified: boolean;
+export type JitsiHostProbe = {
+  /** External API and config.js were reachable. Not a JWT or tokenAuth attestation. */
+  reachable: boolean;
   reasons: string[];
 };
+
+export const JITSI_PROBE_NOT_ATTESTATION =
+  "This probe is a connectivity/configuration diagnostic, not a security attestation.";
+
+const INCONCLUSIVE_AUTH_SIGNALS =
+  /not-authorized|policy-violation|authentication required|item-not-found/;
 
 const BOSH_BODY = (host: string) =>
   `<body rid="1" xmlns="http://jabber.org/protocol/httpbind" to="${host}" xml:lang="en" wait="30" hold="1" ver="1.6" xmpp:version="1.0" xmlns:xmpp="urn:xmpp:xbosh"/>`;
@@ -21,22 +28,31 @@ async function readText(
 }
 
 /**
- * Confirms the conferencing host serves the External API and rejects an
- * unauthenticated BOSH bind. Env JWT secrets alone are not enough.
+ * Connectivity and configuration diagnostic for a private Jitsi host.
+ * Does not prove JWT enforcement. HTTP 401/403, item-not-found, and
+ * policy-violation are recorded as inconclusive, not as tokenAuth proof.
  */
-export async function verifyJitsiProviderAuth(
+export async function probeJitsiHost(
   origin: string,
   host: string,
   fetchImpl: typeof fetch = fetch,
-): Promise<JitsiAuthProbe> {
+): Promise<JitsiHostProbe> {
   const reasons: string[] = [];
+  let apiOk = false;
+  let configOk = false;
+
   let apiJs: { ok: boolean; status: number; body: string };
   try {
     apiJs = await readText(fetchImpl, `${origin}/external_api.js`);
   } catch {
-    return { verified: false, reasons: ["JITSI_DOMAIN did not serve /external_api.js"] };
+    return {
+      reachable: false,
+      reasons: ["JITSI_DOMAIN did not serve /external_api.js", JITSI_PROBE_NOT_ATTESTATION],
+    };
   }
-  if (!apiJs.ok || !apiJs.body.includes("JitsiMeetExternalAPI")) {
+  if (apiJs.ok && apiJs.body.includes("JitsiMeetExternalAPI")) {
+    apiOk = true;
+  } else {
     reasons.push("JITSI_DOMAIN /external_api.js is missing JitsiMeetExternalAPI");
   }
 
@@ -45,42 +61,45 @@ export async function verifyJitsiProviderAuth(
     configJs = await readText(fetchImpl, `${origin}/config.js`);
   } catch {
     return {
-      verified: false,
-      reasons: [...reasons, "JITSI_DOMAIN did not serve /config.js"],
+      reachable: false,
+      reasons: [...reasons, "JITSI_DOMAIN did not serve /config.js", JITSI_PROBE_NOT_ATTESTATION],
     };
   }
   if (!configJs.ok) {
     reasons.push("JITSI_DOMAIN /config.js was not reachable");
-  } else if (/\banonymousdomain\s*:/.test(configJs.body)) {
-    reasons.push("config.js advertises anonymousdomain (unsigned guests can join)");
+  } else {
+    configOk = true;
+    if (/\banonymousdomain\s*:/.test(configJs.body)) {
+      reasons.push("config.js advertises anonymousdomain (unsigned guests may be allowed)");
+    }
   }
 
-  let bind: { ok: boolean; status: number; body: string };
   try {
-    bind = await readText(fetchImpl, `${origin}/http-bind`, {
+    const bind = await readText(fetchImpl, `${origin}/http-bind`, {
       method: "POST",
       headers: { "content-type": "text/xml; charset=utf-8" },
       body: BOSH_BODY(host),
     });
+    const bindText = bind.body.toLowerCase();
+    const openedAnonymousSession = /(?:\s|")sid\s*=/.test(bind.body);
+    const inconclusiveAuthSignal =
+      bind.status === 401 ||
+      bind.status === 403 ||
+      INCONCLUSIVE_AUTH_SIGNALS.test(bindText);
+
+    if (openedAnonymousSession) {
+      reasons.push("Unauthenticated BOSH bind opened a session; review tokenAuth on the host");
+    } else if (inconclusiveAuthSignal) {
+      reasons.push(
+        "BOSH returned 401/403, item-not-found, or policy-violation; that is not proof of JWT enforcement",
+      );
+    } else {
+      reasons.push("BOSH /http-bind responded; the result is inconclusive for JWT enforcement");
+    }
   } catch {
-    return {
-      verified: false,
-      reasons: [...reasons, "Unauthenticated BOSH bind could not be reached at /http-bind"],
-    };
+    reasons.push("BOSH /http-bind was not reachable");
   }
 
-  const bindText = bind.body.toLowerCase();
-  const rejectedAnonymous =
-    bind.status === 401 ||
-    bind.status === 403 ||
-    /not-authorized|policy-violation|authentication required|item-not-found/.test(bindText);
-  const acceptedAnonymous = /(?:\s|")sid\s*=/.test(bind.body) && !rejectedAnonymous;
-
-  if (acceptedAnonymous) {
-    reasons.push("Unauthenticated BOSH bind was accepted (JWT tokenAuth is not enforced)");
-  } else if (!rejectedAnonymous) {
-    reasons.push("Unauthenticated BOSH bind did not fail closed; JWT enforcement was not proven");
-  }
-
-  return { verified: reasons.length === 0, reasons };
+  reasons.push(JITSI_PROBE_NOT_ATTESTATION);
+  return { reachable: apiOk && configOk, reasons };
 }

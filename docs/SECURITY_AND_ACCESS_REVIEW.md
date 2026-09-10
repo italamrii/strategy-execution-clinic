@@ -160,7 +160,8 @@ Optional (required for live private meeting entry):
 - `JITSI_JWT_APP_ID`
 - `JITSI_JWT_SECRET`
 - `JITSI_JWT_ISSUER` (optional if it matches the app id)
+- `JITSI_OPERATOR_VERIFIED=YES` — set only after the operator has tested the real host (valid room-scoped token succeeds; missing, invalid, expired, and wrong-room tokens fail; direct room access cannot bypass authentication)
 
-Until those values are set **and** the provider probe verifies tokenAuth (External API present, no `anonymousdomain`, unauthenticated BOSH rejected), meeting records can be stored but live entry is disabled. The client delivers the JWT through the documented `JitsiMeetExternalAPI` `jwt` option. Platform page authorization is not sufficient for conferencing privacy; the Jitsi host must reject unauthenticated room URLs.
+Until **both** the private JWT configuration and the operator flag are set, meeting records can be stored but live entry is disabled. The host probe is a connectivity diagnostic, not a security attestation; HTTP 401/403, `item-not-found`, and `policy-violation` do not prove JWT enforcement. The client delivers the JWT through the documented `JitsiMeetExternalAPI` `jwt` option. Platform page authorization is not sufficient for conferencing privacy.
 
 Never set `ENABLE_TEST_OTP_ENDPOINT=true` in production.

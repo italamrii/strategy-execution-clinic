@@ -6,18 +6,44 @@ import {
   jitsiExternalApiOptions,
   jitsiExternalApiScriptUrl,
 } from "./jitsi-external-api";
-import { verifyJitsiProviderAuth } from "./probe";
+import { JITSI_PROBE_NOT_ATTESTATION, probeJitsiHost } from "./probe";
 import {
   canEnterPrivateConsultationMeeting,
+  JITSI_OPERATOR_VERIFIED_REQUIREMENT,
   meetingProviderSetup,
 } from "./provider";
-import { buildMeetingJoinSession } from "./service";
+import { buildMeetingJoinSession, resolveMeetingProviderReadiness } from "./service";
 
 function clearJitsiEnv() {
   delete process.env.JITSI_DOMAIN;
   delete process.env.JITSI_JWT_APP_ID;
   delete process.env.JITSI_JWT_SECRET;
   delete process.env.JITSI_JWT_ISSUER;
+  delete process.env.JITSI_OPERATOR_VERIFIED;
+}
+
+function setPrivateJitsiConfig() {
+  process.env.JITSI_DOMAIN = "https://meet.clinic.example";
+  process.env.JITSI_JWT_APP_ID = "clinic";
+  process.env.JITSI_JWT_SECRET = "super-secret";
+}
+
+function hostProbeFetch(bosh: { status: number; body: string }) {
+  return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/external_api.js")) {
+      return new Response("class JitsiMeetExternalAPI {}", { status: 200 });
+    }
+    if (url.endsWith("/config.js")) {
+      return new Response("var config = { hosts: { domain: 'meet.clinic.example' } };", {
+        status: 200,
+      });
+    }
+    if (url.endsWith("/http-bind") && init?.method === "POST") {
+      return new Response(bosh.body, { status: bosh.status });
+    }
+    return new Response("missing", { status: 404 });
+  }) as unknown as typeof fetch;
 }
 
 function decodeJwtPayload(token: string) {
@@ -60,13 +86,13 @@ describe("meeting provider setup", () => {
     expect(setup.missing).toEqual(expect.arrayContaining(["JITSI_JWT_APP_ID", "JITSI_JWT_SECRET"]));
   });
 
-  it("treats env credentials as incomplete until the provider probe verifies tokenAuth", () => {
-    process.env.JITSI_DOMAIN = "https://meet.clinic.example";
-    process.env.JITSI_JWT_APP_ID = "clinic";
-    process.env.JITSI_JWT_SECRET = "super-secret";
+  it("treats private JWT env as configuration only until the operator flag is set", () => {
+    setPrivateJitsiConfig();
     const setup = meetingProviderSetup();
     expect(setup.secure).toBe(true);
     expect(setup.host).toBe("meet.clinic.example");
+    expect(canEnterPrivateConsultationMeeting()).toBe(false);
+    expect(resolveMeetingProviderReadiness().ready).toBe(false);
   });
 });
 
@@ -98,9 +124,8 @@ describe("Jitsi JWT room scoping", () => {
 
 describe("JitsiMeetExternalAPI jwt option", () => {
   it("does not construct an iframe src with jwt in the fragment", () => {
-    process.env.JITSI_DOMAIN = "https://meet.clinic.example";
-    process.env.JITSI_JWT_APP_ID = "clinic";
-    process.env.JITSI_JWT_SECRET = "super-secret";
+    setPrivateJitsiConfig();
+    process.env.JITSI_OPERATOR_VERIFIED = "YES";
     const session = buildMeetingJoinSession("sec-room-key", {
       userId: "user-1",
       displayName: "Ada",
@@ -144,8 +169,31 @@ describe("JitsiMeetExternalAPI jwt option", () => {
   });
 });
 
-describe("Jitsi provider auth probe", () => {
-  it("is unverified when unsigned guests or anonymous BOSH succeed", async () => {
+describe("Jitsi host probe is a diagnostic", () => {
+  it("does not treat HTTP 401, 403, item-not-found, or policy-violation as JWT proof", async () => {
+    const cases = [
+      { status: 401, body: "<failure><not-authorized/></failure>" },
+      { status: 403, body: "forbidden" },
+      { status: 200, body: "<failure><item-not-found/></failure>" },
+      { status: 200, body: "<failure><policy-violation/></failure>" },
+    ];
+
+    for (const bosh of cases) {
+      const probe = await probeJitsiHost(
+        "https://meet.clinic.example",
+        "meet.clinic.example",
+        hostProbeFetch(bosh),
+      );
+      expect(probe.reachable, `reachable for ${bosh.status} ${bosh.body}`).toBe(true);
+      expect(probe).not.toHaveProperty("verified");
+      expect(probe.reasons.some((reason) => /not proof of JWT enforcement/i.test(reason))).toBe(
+        true,
+      );
+      expect(probe.reasons).toContain(JITSI_PROBE_NOT_ATTESTATION);
+    }
+  });
+
+  it("records anonymousdomain and an opened BOSH session as diagnostics only", async () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith("/external_api.js")) {
@@ -162,40 +210,73 @@ describe("Jitsi provider auth probe", () => {
       return new Response("missing", { status: 404 });
     }) as unknown as typeof fetch;
 
-    const probe = await verifyJitsiProviderAuth(
+    const probe = await probeJitsiHost(
       "https://meet.clinic.example",
       "meet.clinic.example",
       fetchImpl,
     );
-    expect(probe.verified).toBe(false);
+    expect(probe.reachable).toBe(true);
     expect(probe.reasons.some((reason) => reason.includes("anonymousdomain"))).toBe(true);
-    expect(probe.reasons.some((reason) => reason.includes("Unauthenticated BOSH"))).toBe(true);
+    expect(probe.reasons.some((reason) => reason.includes("opened a session"))).toBe(true);
+    expect(probe.reasons).toContain(JITSI_PROBE_NOT_ATTESTATION);
+  });
+});
+
+describe("meeting entry operator flag", () => {
+  it("does not enable entry from configuration or probe success alone", async () => {
+    setPrivateJitsiConfig();
+    const probe = await probeJitsiHost(
+      "https://meet.clinic.example",
+      "meet.clinic.example",
+      hostProbeFetch({ status: 401, body: "<failure><not-authorized/></failure>" }),
+    );
+    expect(probe.reachable).toBe(true);
+    expect(meetingProviderSetup().secure).toBe(true);
+
+    const readiness = resolveMeetingProviderReadiness();
+    expect(readiness.ready).toBe(false);
+    expect(readiness.operatorVerified).toBe(false);
+    expect(readiness.blockers).toContain(JITSI_OPERATOR_VERIFIED_REQUIREMENT);
+    expect(canEnterPrivateConsultationMeeting()).toBe(false);
+    expect(() =>
+      buildMeetingJoinSession("sec-room-key", {
+        userId: "user-1",
+        displayName: "Ada",
+        moderator: true,
+      }),
+    ).toThrow(/provider_misconfigured/);
   });
 
-  it("is verified when External API is present and anonymous BOSH is rejected", async () => {
-    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
-      if (url.endsWith("/external_api.js")) {
-        return new Response("class JitsiMeetExternalAPI {}", { status: 200 });
-      }
-      if (url.endsWith("/config.js")) {
-        return new Response("var config = { hosts: { domain: 'meet.clinic.example' } };", {
-          status: 200,
-        });
-      }
-      if (url.endsWith("/http-bind") && init?.method === "POST") {
-        expect(String(init.body ?? "")).not.toContain("jwt");
-        return new Response("<failure><not-authorized/></failure>", { status: 401 });
-      }
-      return new Response("missing", { status: 404 });
-    }) as unknown as typeof fetch;
+  it("does not enable entry when the operator flag is set without private JWT configuration", () => {
+    process.env.JITSI_OPERATOR_VERIFIED = "YES";
+    const readiness = resolveMeetingProviderReadiness();
+    expect(readiness.operatorVerified).toBe(true);
+    expect(readiness.setup.secure).toBe(false);
+    expect(readiness.ready).toBe(false);
+    expect(canEnterPrivateConsultationMeeting()).toBe(false);
+    expect(readiness.blockers.some((item) => item.includes("JITSI_DOMAIN"))).toBe(true);
+  });
 
-    const probe = await verifyJitsiProviderAuth(
-      "https://meet.clinic.example",
-      "meet.clinic.example",
-      fetchImpl,
-    );
-    expect(probe.verified).toBe(true);
-    expect(probe.reasons).toEqual([]);
+  it("does not treat a truthy non-YES operator flag as verification", () => {
+    setPrivateJitsiConfig();
+    process.env.JITSI_OPERATOR_VERIFIED = "true";
+    expect(resolveMeetingProviderReadiness().ready).toBe(false);
+    expect(canEnterPrivateConsultationMeeting()).toBe(false);
+  });
+
+  it("enables entry only when configuration and JITSI_OPERATOR_VERIFIED=YES are both set", () => {
+    setPrivateJitsiConfig();
+    process.env.JITSI_OPERATOR_VERIFIED = "YES";
+    const readiness = resolveMeetingProviderReadiness();
+    expect(readiness.ready).toBe(true);
+    expect(readiness.blockers).toEqual([]);
+    expect(canEnterPrivateConsultationMeeting()).toBe(true);
+    const session = buildMeetingJoinSession("sec-room-key", {
+      userId: "user-1",
+      displayName: "Ada",
+      moderator: true,
+    });
+    expect(session.jwt).toBeTruthy();
+    expect(decodeJwtPayload(session.jwt).room).toBe("sec-room-key");
   });
 });
