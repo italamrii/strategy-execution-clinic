@@ -154,8 +154,14 @@ Existing production set remains required:
 - `BOOTSTRAP_CONFIRM=YES` (exactly this value; omit or set anything else to disable bootstrap)
 - Object storage variables already required in production validation
 
-Optional:
+Optional (required for live private meeting entry):
 
-- `JITSI_DOMAIN` (HTTPS origin; defaults to `https://meet.jit.si`)
+- `JITSI_DOMAIN` — HTTPS origin of a **private** Jitsi host. Public `meet.jit.si` / `8x8.vc` are rejected.
+- `JITSI_JWT_APP_ID`
+- `JITSI_JWT_SECRET`
+- `JITSI_JWT_ISSUER` (optional if it matches the app id)
+- `JITSI_OPERATOR_VERIFIED=YES` — set only after the operator has tested the real host (valid room-scoped token succeeds; missing, invalid, expired, and wrong-room tokens fail; direct room access cannot bypass authentication)
+
+Until **both** the private JWT configuration and the operator flag are set, meeting records can be stored but live entry is disabled. The host probe is a connectivity diagnostic, not a security attestation; HTTP 401/403, `item-not-found`, and `policy-violation` do not prove JWT enforcement. The client delivers the JWT through the documented `JitsiMeetExternalAPI` `jwt` option. Platform page authorization is not sufficient for conferencing privacy.
 
 Never set `ENABLE_TEST_OTP_ENDPOINT=true` in production.

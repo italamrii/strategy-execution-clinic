@@ -1,16 +1,9 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import type { OwnCredentialDto } from "@/modules/credentials";
+import { MembershipCard3D } from "@/shared/three/membership-card-3d";
 import { StaticMembershipCard } from "./credential-wallet";
-
-const MembershipCard3D = dynamic(
-  () => import("@/shared/three/membership-card-3d").then((mod) => mod.MembershipCard3D),
-  {
-    ssr: false,
-    loading: () => <div className="mx-auto aspect-[1.6/1] w-full max-w-xl animate-pulse bg-ivory" />,
-  },
-);
 
 export function CredentialCardStage({
   credential,
@@ -19,21 +12,17 @@ export function CredentialCardStage({
   credential: OwnCredentialDto;
   locale: "ar" | "en";
 }) {
-  const memberName =
-    locale === "ar"
-      ? credential.memberNameAr
-      : credential.memberNameEn ?? credential.memberNameAr;
-  const typeLabel =
-    locale === "ar" ? credential.membershipTypeAr : credential.membershipTypeEn;
-
+  const t = useTranslations("credential");
   return (
-    <MembershipCard3D
-      memberName={memberName}
-      typeLabel={typeLabel}
-      publicCode={credential.publicCode}
-      variant={credential.membershipTypeSlug}
-      ariaLabel={credential.publicCode}
-      fallback={<StaticMembershipCard credential={credential} locale={locale} />}
-    />
+    <div className="space-y-8">
+      <MembershipCard3D
+        credentialId={credential.id}
+        locale={locale}
+        ariaLabel={t("cardPresentationLabel")}
+        hint={t("cardPresentationHint")}
+        flipLabel={t("flipCard")}
+      />
+      <StaticMembershipCard credential={credential} locale={locale} />
+    </div>
   );
 }

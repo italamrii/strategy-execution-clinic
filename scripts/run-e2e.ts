@@ -276,6 +276,7 @@ async function startApp(databaseUrl: string): Promise<string> {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "",
     CLERK_SECRET_KEY: "",
     ENABLE_TEST_OTP_ENDPOINT: "true",
+    JITSI_OPERATOR_VERIFIED: "",
     PORT: String(E2E_APP_PORT),
     HOSTNAME: E2E_HOST,
   };
@@ -370,6 +371,7 @@ async function runPlaywright(baseUrl: string, extraArgs: string[]) {
         AUTH_PROVIDER: "legacy",
         NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "",
         CLERK_SECRET_KEY: "",
+        JITSI_OPERATOR_VERIFIED: "",
         AUTH_SECRET: process.env.AUTH_SECRET ?? "playwright-auth-secret-e2e",
         APP_URL: baseUrl,
       },

@@ -4,6 +4,7 @@ import { resolvePageAccess } from "@/modules/identity";
 import { listConsultationsForUser, listEligibleConsultationExperts } from "@/modules/consultations";
 import { ConsultationAssignForm } from "@/modules/consultations/ui/consultation-assign-form";
 import { AccessDenied } from "@/shared/ui/access-denied";
+import { Link } from "@/i18n/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,9 @@ export default async function AdminConsultationsPage({
         {rows.map((row) => (
           <article key={row.id} className="rounded-2xl border border-sand p-5">
             <div className="flex flex-wrap justify-between gap-3">
-              <strong>{row.subject}</strong>
+              <Link href={`/account/consultations/${row.id}`} className="font-semibold text-navy">
+                {row.subject}
+              </Link>
               <span>{statusLabels[row.status] ?? row.status}</span>
             </div>
             <p className="mt-3 text-sm text-graphite">{row.description}</p>

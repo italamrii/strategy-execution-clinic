@@ -1,0 +1,210 @@
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
+import { mkdir, rm } from "node:fs/promises";
+import path from "node:path";
+import EmbeddedPostgres from "@/shared/testing/embedded-postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
+import postgres from "postgres";
+import { v7 as uuidv7 } from "uuid";
+import { closeDb, getDb, resetDb } from "@/shared/db/client";
+import { consultationRequests, profiles, roles, userRoles, users } from "@/shared/db/schema";
+import { seedRbacCatalog } from "@/modules/identity";
+import { createConsultation } from "@/modules/consultations";
+import { createMeeting, getMeetingForUser, MeetingError } from "@/modules/meetings";
+
+const PORT = 55540 + ((process.pid + 13) % 600);
+const DATA_DIR = path.resolve(process.cwd(), ".data", `pg-meetings-test-${process.pid}`);
+
+function clearJitsiEnv() {
+  delete process.env.JITSI_DOMAIN;
+  delete process.env.JITSI_JWT_APP_ID;
+  delete process.env.JITSI_JWT_SECRET;
+  delete process.env.JITSI_JWT_ISSUER;
+  delete process.env.JITSI_OPERATOR_VERIFIED;
+}
+
+async function createUser(email: string) {
+  const db = getDb();
+  const id = uuidv7();
+  await db.insert(users).values({
+    id,
+    email,
+    emailVerifiedAt: new Date(),
+    locale: "ar",
+    status: "active",
+  });
+  await db.insert(profiles).values({
+    id: uuidv7(),
+    userId: id,
+    displayNameAr: email.split("@")[0]!,
+    displayNameEn: email.split("@")[0]!,
+    visibility: "members",
+  });
+  return id;
+}
+
+async function grantRole(userId: string, slug: string) {
+  const db = getDb();
+  const role = await db.query.roles.findFirst({ where: eq(roles.slug, slug) });
+  await db.insert(userRoles).values({
+    id: uuidv7(),
+    userId,
+    roleId: role!.id,
+    organizationId: null,
+    grantedBy: userId,
+  });
+}
+
+describe("meetings access integration", () => {
+  let pg: EmbeddedPostgres;
+  let expertId = "";
+  let memberId = "";
+  let strangerId = "";
+  let adminId = "";
+
+  beforeAll(async () => {
+    process.env.AUTH_SECRET = "test-auth-secret-meetings";
+    process.env.EMAIL_PROVIDER = "memory";
+    process.env.APP_URL = "http://localhost:3000";
+    clearJitsiEnv();
+    await mkdir(DATA_DIR, { recursive: true });
+    await rm(DATA_DIR, { recursive: true, force: true });
+    await mkdir(DATA_DIR, { recursive: true });
+    pg = new EmbeddedPostgres({
+      databaseDir: DATA_DIR,
+      user: "clinic",
+      password: "clinic",
+      port: PORT,
+      persistent: false,
+    });
+    await pg.initialise();
+    await pg.start();
+    try {
+      await pg.createDatabase("clinic");
+    } catch {
+      // already exists
+    }
+    const url = `postgres://clinic:clinic@127.0.0.1:${PORT}/clinic`;
+    process.env.DATABASE_URL = url;
+    const sql = postgres(url, { max: 1 });
+    await migrate(drizzle(sql), {
+      migrationsFolder: path.resolve(process.cwd(), "drizzle"),
+    });
+    await sql.end({ timeout: 5 });
+    await resetDb(url);
+    await seedRbacCatalog();
+
+    expertId = await createUser("meetings-expert@example.com");
+    memberId = await createUser("meetings-member@example.com");
+    strangerId = await createUser("meetings-stranger@example.com");
+    adminId = await createUser("meetings-admin@example.com");
+    await grantRole(expertId, "expert");
+    await grantRole(memberId, "member");
+    await grantRole(strangerId, "member");
+    await grantRole(adminId, "platform_admin");
+  }, 180_000);
+
+  afterEach(clearJitsiEnv);
+
+  afterAll(async () => {
+    clearJitsiEnv();
+    await closeDb();
+    try {
+      await pg?.stop();
+    } catch {
+      // ignore shutdown races
+    }
+    await rm(DATA_DIR, { recursive: true, force: true });
+  });
+
+  it("stores consultation meetings but withholds join URLs until a private JWT host is configured", async () => {
+    const consultation = await createConsultation({
+      actorUserId: memberId,
+      subject: "Private advisory session",
+      description: "Need a confidential working session on execution sequencing.",
+    });
+    await getDb()
+      .update(consultationRequests)
+      .set({ assignedExpertUserId: expertId, status: "assigned", updatedAt: new Date() })
+      .where(eq(consultationRequests.id, consultation.id));
+
+    const created = await createMeeting({
+      actorUserId: expertId,
+      consultationId: consultation.id,
+      title: "Confidential advisory room",
+      startsAt: new Date(Date.now() + 60_000),
+    });
+
+    const forExpert = await getMeetingForUser(expertId, created.id);
+    expect(forExpert.joinSession).toBeNull();
+    expect(forExpert.setupRequired).toBe(true);
+    expect(forExpert.missingProviderConfig.length).toBeGreaterThan(0);
+
+    const forMember = await getMeetingForUser(memberId, created.id);
+    expect(forMember.joinSession).toBeNull();
+    expect(forMember.setupRequired).toBe(true);
+
+    await expect(getMeetingForUser(strangerId, created.id)).rejects.toBeInstanceOf(MeetingError);
+    await expect(getMeetingForUser(strangerId, created.id)).rejects.toMatchObject({
+      code: "forbidden",
+    });
+  });
+
+  it("keeps join disabled when JWT configuration is set without the operator flag", async () => {
+    process.env.JITSI_DOMAIN = "https://meet.clinic.example";
+    process.env.JITSI_JWT_APP_ID = "clinic";
+    process.env.JITSI_JWT_SECRET = "super-secret";
+
+    const created = await createMeeting({
+      actorUserId: adminId,
+      title: "Configured private room",
+      startsAt: new Date(Date.now() + 120_000),
+    });
+    const forHost = await getMeetingForUser(adminId, created.id);
+    expect(forHost.setupRequired).toBe(true);
+    expect(forHost.joinSession).toBeNull();
+    expect(forHost.missingProviderConfig.some((item) => item.includes("JITSI_OPERATOR_VERIFIED"))).toBe(
+      true,
+    );
+
+    await expect(getMeetingForUser(strangerId, created.id)).rejects.toMatchObject({
+      code: "forbidden",
+    });
+  });
+
+  it("keeps join disabled when the operator flag is set without JWT configuration", async () => {
+    process.env.JITSI_OPERATOR_VERIFIED = "YES";
+    const created = await createMeeting({
+      actorUserId: adminId,
+      title: "Flag without host",
+      startsAt: new Date(Date.now() + 120_000),
+    });
+    const forHost = await getMeetingForUser(adminId, created.id);
+    expect(forHost.joinSession).toBeNull();
+    expect(forHost.setupRequired).toBe(true);
+    expect(forHost.missingProviderConfig.some((item) => item.includes("JITSI_DOMAIN"))).toBe(true);
+  });
+
+  it("mints a join session only when configuration and the operator flag are both set", async () => {
+    process.env.JITSI_DOMAIN = "https://meet.clinic.example";
+    process.env.JITSI_JWT_APP_ID = "clinic";
+    process.env.JITSI_JWT_SECRET = "super-secret";
+    process.env.JITSI_OPERATOR_VERIFIED = "YES";
+
+    const created = await createMeeting({
+      actorUserId: adminId,
+      title: "Operator-verified room",
+      startsAt: new Date(Date.now() + 120_000),
+    });
+    const forHost = await getMeetingForUser(adminId, created.id);
+    expect(forHost.setupRequired).toBe(false);
+    expect(forHost.joinSession?.jwt).toBeTruthy();
+    expect(forHost.joinSession?.roomName).toMatch(/^sec-/);
+    expect(forHost.joinSession?.origin).toBe("https://meet.clinic.example");
+
+    await expect(getMeetingForUser(strangerId, created.id)).rejects.toMatchObject({
+      code: "forbidden",
+    });
+  });
+});

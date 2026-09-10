@@ -76,12 +76,34 @@ Document each release migration compatibility in `docs/operations/RELEASE.md`.
 
 ## Audio/video meetings
 
-Set `JITSI_DOMAIN` to a hostname such as `meet.jit.si` or to the HTTPS origin of a
-managed/self-hosted Jitsi deployment. The app derives its CSP, camera, microphone,
-WebSocket, and iframe allowlists from this single value.
+Private consultation entry requires **both**:
 
-Meeting pages and records are protected by platform permissions, and room names are
-generated with cryptographically random identifiers. The public `meet.jit.si` default
-is suitable for initial operation but does not make the conferencing provider private.
-For confidential advisory sessions, use a managed or self-hosted Jitsi deployment with
-provider-side authentication and the applicable retention policy.
+- Valid private-host configuration: `JITSI_DOMAIN` (HTTPS origin; `meet.jit.si` / `8x8.vc` are rejected), `JITSI_JWT_APP_ID`, `JITSI_JWT_SECRET`, and optional `JITSI_JWT_ISSUER`.
+- `JITSI_OPERATOR_VERIFIED=YES` — an explicit server-side flag. Any other value leaves live entry disabled.
+
+Configuration or a successful host probe cannot open rooms by themselves. The rest of the platform does not require a Jitsi host; meetings can still be scheduled and stored.
+
+The in-app probe (`probeJitsiHost`) is a connectivity/configuration diagnostic only. It does **not** attest JWT enforcement. HTTP 401/403, XMPP `item-not-found`, and `policy-violation` are inconclusive.
+
+Set `JITSI_OPERATOR_VERIFIED=YES` only after testing the **real** host:
+
+1. A valid room-scoped token succeeds.
+2. Missing, invalid, expired, and wrong-room tokens fail.
+3. Opening the room URL directly cannot bypass authentication.
+
+The client then delivers the token as the documented `JitsiMeetExternalAPI` `jwt` option. Platform page authorization is not enough for conferencing privacy.
+
+## Migration 0014
+
+`drizzle/0014_support_and_membership_validity.sql` is new in this release (production at `8ca08cf` has not applied it).
+
+It creates `support_requests`, then updates membership validity **only** for 0011 factory rows that still match the UPDATE WHERE clause.
+
+Run the read-only listing first: `pnpm preflight:0014`. That SELECT uses the same WHERE as the UPDATE and prints exactly which membership types would change.
+
+| UUID | Slug | Result |
+| --- | --- | --- |
+| `…440002`–`…440007` | expert, professional, contributor, volunteer, volunteer leader, distinguished volunteer | 1-year (`fixed_days` / 365) **if** the row still has `lifetime`, `validity_days` NULL, `renewal_required` false, and `updated_at` within 5s of `created_at` |
+| `…440001`, `…440008`, `…440009` | founding member, strategic partner, institutional member | not updated |
+
+The 5-second `updated_at` window is a conservative filter for likely-unedited seed rows. It is not proof a row was never edited: seed sets both timestamps together, and an administrator save within 5 seconds would still match. Rows with a customized validity policy or a later `updated_at` are skipped. New types created after 0011 follow application defaults in `seedMembershipCatalog` / catalog writes, not this UPDATE.

@@ -99,6 +99,13 @@
       "when": 1788950000000,
       "tag": "0013_rbac_catalog_and_role_uniqueness",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788953600000,
+      "tag": "0014_support_and_membership_validity",
+      "breakpoints": true
     }
   ]
 }

@@ -300,15 +300,20 @@ describe("membership integration", () => {
     expect(own[0]!.tracks).toHaveLength(1);
     expect(own[0]!.tracks[0]!.id).toBe(strategyTrackId);
 
-    // Duplicate approval must not create a second membership
-    await expect(
-      approveApplication({ actorUserId: reviewer, applicationId }),
-    ).rejects.toBeInstanceOf(MembershipError);
+    // Duplicate approval must remain a single membership and a single card
+    const again = await approveApplication({ actorUserId: reviewer, applicationId });
+    expect(again).toBe(membershipId);
 
     const after = await db.query.memberships.findMany({
       where: eq(memberships.userId, applicant),
     });
     expect(after).toHaveLength(1);
+    const { credentials } = await import("@/shared/db/schema");
+    const cards = await db.query.credentials.findMany({
+      where: eq(credentials.membershipId, membershipId),
+    });
+    expect(cards).toHaveLength(1);
+    expect(after[0]!.endsAt).not.toBeNull();
   });
 
   it("handles concurrent approvals with a single membership", async () => {
@@ -349,7 +354,9 @@ describe("membership integration", () => {
       approveApplication({ actorUserId: r2, applicationId }),
     ]);
     const fulfilled = results.filter((r) => r.status === "fulfilled");
-    expect(fulfilled.length).toBe(1);
+    expect(fulfilled.length).toBeGreaterThanOrEqual(1);
+    const ids = fulfilled.map((r) => (r as PromiseFulfilledResult<string>).value);
+    expect(new Set(ids).size).toBe(1);
     const rows = await db.query.memberships.findMany({
       where: eq(memberships.userId, applicant),
     });

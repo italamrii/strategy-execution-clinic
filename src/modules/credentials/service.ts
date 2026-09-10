@@ -104,18 +104,26 @@ export async function issueCredentialForMembership(input: {
   const publicCode = await generateUniquePublicCode(type.code, now.getFullYear());
   const credentialId = uuidv7();
 
-  await db.insert(credentials).values({
-    id: credentialId,
-    membershipId: membership.id,
-    publicCode,
-    status: "active",
-    tokenVersion: 1,
-    designVersion: CARD_DESIGN_VERSION,
-    issuanceSource: input.issuanceSource,
-    issuedAt: membership.issuedAt ?? now,
-    expiresAt: membership.endsAt,
-    createdBy: input.actorUserId ?? null,
-  });
+  try {
+    await db.insert(credentials).values({
+      id: credentialId,
+      membershipId: membership.id,
+      publicCode,
+      status: "active",
+      tokenVersion: 1,
+      designVersion: CARD_DESIGN_VERSION,
+      issuanceSource: input.issuanceSource,
+      issuedAt: membership.issuedAt ?? now,
+      expiresAt: membership.endsAt,
+      createdBy: input.actorUserId ?? null,
+    });
+  } catch {
+    const raced = await db.query.credentials.findFirst({
+      where: eq(credentials.membershipId, input.membershipId),
+    });
+    if (raced) return raced.id;
+    throw new CredentialError("public_code_collision");
+  }
 
   await writeCredentialHistory({
     credentialId,

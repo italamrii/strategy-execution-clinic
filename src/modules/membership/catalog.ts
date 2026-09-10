@@ -21,5 +21,13 @@ export const TRACK_SEED = [
   { code: "08", slug: "ai-automation", nameAr: "مسار الذكاء الاصطناعي والأتمتة", nameEn: "AI & Automation Path" },
 ] as const;
 
+export const LIFETIME_MEMBERSHIP_SLUGS = new Set([
+  "founding_member",
+  "strategic_partner",
+  "institutional_member",
+]);
+
+export const ELEVATED_APPROVAL_SLUGS = new Set(["founding_member", "expert_member"]);
+
 export function getPublicMembershipTypes() { return MEMBERSHIP_TYPE_SEED; }
 export function getPublicTracks() { return TRACK_SEED; }

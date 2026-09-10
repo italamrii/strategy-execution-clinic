@@ -1079,6 +1079,23 @@ export const meetingRooms = pgTable("meeting_rooms", {
   index("meeting_rooms_starts_idx").on(t.startsAt),
 ]);
 
+export const supportRequests = pgTable("support_requests", {
+  id: uuid("id").primaryKey(),
+  userId: uuid("user_id").references(() => users.id),
+  category: text("category").notNull(),
+  subject: text("subject").notNull(),
+  message: text("message").notNull(),
+  replyEmail: text("reply_email").notNull(),
+  locale: text("locale").notNull().default("ar"),
+  status: text("status").notNull().default("open"),
+  ipHash: text("ip_hash"),
+  adminNotes: text("admin_notes"),
+  ...timestamps,
+}, (t) => [
+  index("support_requests_status_created_idx").on(t.status, t.createdAt),
+  index("support_requests_category_status_idx").on(t.category, t.status),
+]);
+
 export const meetingParticipants = pgTable("meeting_participants", {
   id: uuid("id").primaryKey(),
   meetingId: uuid("meeting_id").notNull().references(() => meetingRooms.id),

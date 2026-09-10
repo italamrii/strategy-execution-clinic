@@ -121,7 +121,7 @@ test.describe("phase 6 operations e2e", () => {
     await page.goto("/en/does-not-exist-route");
     await expect(page.getByRole("heading", { level: 1 })).toContainText(/not found|غير موجودة/i);
     await page.goto("/en/forbidden");
-    await expect(page.getByText(/Access denied|الوصول مرفوض/i)).toBeVisible();
+    await expect(page.getByText(/does not have access|لا يملك صلاحية/i)).toBeVisible();
 
     const prodOtp = await page.request.get("/api/test/last-otp?email=nope@clinic.test", {
       headers: { "x-bypass-e2e": "1" },

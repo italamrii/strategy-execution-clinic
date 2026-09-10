@@ -29,8 +29,6 @@ import { countFailedNotifications } from "@/modules/notifications";
 const PUBLIC_SETTINGS = [
   "clinic.display_name_ar",
   "clinic.display_name_en",
-  "contact.email",
-  "support.email",
   "default.locale",
   "directory.enabled",
   "applications.enabled",
@@ -269,8 +267,6 @@ export async function seedSystemSettings() {
   const defaults: Record<string, unknown> = {
     "clinic.display_name_ar": "عيادة الاستراتيجية والتنفيذ",
     "clinic.display_name_en": "Strategy & Execution Clinic",
-    "contact.email": "contact@clinic.test",
-    "support.email": "support@clinic.test",
     "default.locale": "ar",
     "directory.enabled": true,
     "applications.enabled": true,

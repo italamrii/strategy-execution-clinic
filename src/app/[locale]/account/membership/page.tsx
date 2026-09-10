@@ -61,7 +61,6 @@ export default async function AccountMembershipPage({
     redirect({ href: "/login", locale });
   }
   const t = await getTranslations("membership");
-  const accountT = await getTranslations("account");
   const [memberships, applications] = await Promise.all([
     listOwnMemberships(auth!.userId),
     listOwnApplications(auth!.userId),
@@ -70,20 +69,6 @@ export default async function AccountMembershipPage({
   return (
     <main id="main" className="mx-auto max-w-6xl px-6 py-16">
       <h1 className="text-4xl text-ink">{t("accountTitle")}</h1>
-      <nav className="mt-6 flex flex-wrap gap-4 text-sm">
-        <Link href="/account" className="text-graphite hover:text-navy">
-          {accountT("overview")}
-        </Link>
-        <Link href="/account/membership" className="border-b border-gold text-navy">
-          {accountT("membership")}
-        </Link>
-        <Link href="/account/profile" className="text-graphite hover:text-navy">
-          {accountT("profile")}
-        </Link>
-        <Link href="/account/security" className="text-graphite hover:text-navy">
-          {accountT("security")}
-        </Link>
-      </nav>
 
       <section className="mt-12">
         {memberships.length === 0 ? (
@@ -135,6 +120,11 @@ export default async function AccountMembershipPage({
                       </li>
                     ))}
                   </ul>
+                ) : null}
+                {membership.status === "active" ? (
+                  <Link href="/account/credential" className="mt-6 inline-flex institutional-button institutional-button--primary">
+                    {t("viewCard")}
+                  </Link>
                 ) : null}
               </li>
             ))}

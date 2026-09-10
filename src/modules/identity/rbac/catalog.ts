@@ -137,6 +137,8 @@ export const PERMISSIONS = [
   "card.read.own",
   "card.template.manage",
   "track.member.manage",
+  "support.request.create",
+  "support.request.read.any",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -327,6 +329,7 @@ const OPS_ADMIN_PERMS = [
   "announcement.manage",
   "content.write",
   "content.read",
+  "support.request.read.any",
   "flag.write",
   "report.read",
 ] as const satisfies readonly Permission[];
@@ -431,6 +434,7 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     "meeting.read.own",
     "meeting.create",
     "meeting.start",
+    "support.request.create",
   ],
   founder: [
     "membership.type.read",
@@ -446,6 +450,7 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     "consultation.create",
     "consultation.read.own",
     "meeting.read.own",
+    "support.request.create",
   ],
   volunteer: [
     "membership.read.own",
@@ -458,6 +463,7 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     "certificate.read.own",
     "notification.read.own",
     "notification.manage.own",
+    "support.request.create",
   ],
   auditor: [
     "rbac.role.read",
@@ -490,5 +496,6 @@ export const ROLE_PERMISSION_MAP: Record<RoleSlug, readonly Permission[]> = {
     "consultation.read.own",
     "meeting.read.own",
     "card.read.own",
+    "support.request.create",
   ],
 };

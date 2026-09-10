@@ -3,7 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { requireLocale } from "@/i18n/locale";
 import { getPublicMembershipTypes, getPublicTracks } from "@/modules/membership";
 import { getPublishedContentBySlug } from "@/modules/content";
-import { EditorialGrid, Hero, MembershipPreview, SectionHeader, SiteFooter, TrackItem, VolunteerJourney } from "@/shared/ui/public-sections";
+import { EditorialGrid, Hero, MembershipPreview, SectionHeader, TrackItem, VolunteerJourney } from "@/shared/ui/public-sections";
 
 export const dynamic = "force-dynamic";
 
@@ -72,10 +72,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <section className="institutional-section join-band">
         <div className="site-container join-band__grid">
           <div><p className="eyebrow">06 · SEC</p><h2>{t("home.joinTitle")}</h2><p>{t("home.joinBody")}</p></div>
-          <div className="action-row"><Link className="institutional-button institutional-button--primary" href="/membership/apply">{t("home.primaryCta")}</Link><Link className="institutional-button institutional-button--secondary" href="/contact">{t("nav.contact")}</Link></div>
+          <div className="action-row"><Link className="institutional-button institutional-button--primary" href="/membership/apply">{t("home.primaryCta")}</Link><Link className="institutional-button institutional-button--secondary" href="/how-it-works">{t("nav.howItWorks")}</Link></div>
         </div>
       </section>
-      <SiteFooter label={t("home.footer")} about={t("nav.about")} contact={t("nav.contact")} verify={t("nav.verify")} />
     </main>
   );
 }

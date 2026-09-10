@@ -22,6 +22,7 @@ import {
 } from "./catalog";
 import { toEmailMessage } from "./email-templates";
 import { sanitizeProviderError } from "./sanitize";
+import { shouldEnqueueTransactionalEmail } from "./email-gate";
 
 function appOrigin() {
   return (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
@@ -82,7 +83,9 @@ export async function scheduleNotification(input: {
     linkPath: input.linkPath ?? null,
   };
 
-  const emailEnabled = await isChannelEnabled(input.recipientUserId, category, "email");
+  const emailEnabled =
+    shouldEnqueueTransactionalEmail() &&
+    (await isChannelEnabled(input.recipientUserId, category, "email"));
   const inAppEnabled = await isChannelEnabled(input.recipientUserId, category, "in_app");
 
   let outboxId: string | null = null;

@@ -16,6 +16,7 @@
     "db:generate": "drizzle-kit generate",
     "db:up": "tsx scripts/db-up.ts",
     "db:migrate": "tsx scripts/db-migrate.ts",
+    "preflight:0014": "tsx scripts/preflight-0014.ts",
     "db:seed-rbac": "tsx scripts/seed-rbac.ts",
     "db:seed-membership": "tsx scripts/seed-membership.ts",
     "db:seed-tracks": "tsx scripts/seed-tracks.ts",

@@ -7,6 +7,12 @@ export async function notifyDomainEvent(input: {
   variables?: Record<string, string>;
   linkPath?: string;
   idempotencyKey: string;
+  inAppOverride?: {
+    titleAr: string;
+    titleEn: string;
+    bodyAr: string;
+    bodyEn: string;
+  };
 }) {
   const result = await scheduleNotification(input);
   if (process.env.E2E === "true" || process.env.NODE_ENV === "test") {

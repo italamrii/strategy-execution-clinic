@@ -98,3 +98,21 @@ export async function saveCardTemplate(input: {
   await writeAudit({ actorUserId: input.actorUserId, action: "CARD_TEMPLATE_SAVED", resourceType: "membership_card_template", resourceId: id, requestId: input.requestId, after: { status: input.status, slug: input.slug } });
   return { id };
 }
+
+export async function seedDefaultCardTemplate(): Promise<void> {
+  const db = getDb();
+  const existing = await db.query.membershipCardTemplates.findFirst({
+    where: eq(membershipCardTemplates.slug, "clinic-navy-gold"),
+  });
+  if (existing) return;
+  await db.insert(membershipCardTemplates).values({
+    id: uuidv7(),
+    membershipTypeId: null,
+    slug: "clinic-navy-gold",
+    nameAr: "البطاقة الكحلية الذهبية",
+    nameEn: "Clinic Navy & Gold",
+    version: 1,
+    status: "active",
+    config: DEFAULT_CARD_DESIGN,
+  });
+}

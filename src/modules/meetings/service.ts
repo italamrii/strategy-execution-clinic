@@ -5,25 +5,66 @@ import { writeAudit } from "@/modules/audit";
 import { getPermissionsForUser, requirePermission } from "@/modules/identity";
 import { sanitizePlainText } from "@/modules/notifications/sanitize";
 import { getDb } from "@/shared/db/client";
-import { consultationRequests, meetingParticipants, meetingRooms } from "@/shared/db/schema";
+import { consultationRequests, meetingParticipants, meetingRooms, profiles } from "@/shared/db/schema";
 import { MeetingError } from "./errors";
+import { signJitsiJwt } from "./jitsi-jwt";
+import type { MeetingJoinSession } from "./jitsi-external-api";
+import {
+  canEnterPrivateConsultationMeeting,
+  isJitsiOperatorVerified,
+  JITSI_OPERATOR_VERIFIED_REQUIREMENT,
+  meetingProviderSetup,
+  usesDefaultPublicJitsi,
+} from "./provider";
 
-function configuredJitsiOrigin() {
-  const raw = process.env.JITSI_DOMAIN?.trim() || "meet.jit.si";
-  const url = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
-  if (url.protocol !== "https:") throw new MeetingError("provider_misconfigured");
-  return url.origin;
+export {
+  canEnterPrivateConsultationMeeting,
+  isJitsiOperatorVerified,
+  meetingProviderSetup,
+  usesDefaultPublicJitsi,
+};
+export type { MeetingJoinSession };
+
+export function resolveMeetingProviderReadiness(env: NodeJS.ProcessEnv = process.env) {
+  const setup = meetingProviderSetup(env);
+  const operatorVerified = isJitsiOperatorVerified(env);
+  const blockers = [
+    ...setup.missing,
+    ...(operatorVerified ? [] : [JITSI_OPERATOR_VERIFIED_REQUIREMENT]),
+  ];
+  return {
+    ready: setup.secure && operatorVerified,
+    setup,
+    operatorVerified,
+    blockers,
+  };
 }
 
-export function meetingEmbedUrl(roomKey: string) {
-  const params = new URLSearchParams({
-    "config.prejoinPageEnabled": "true",
-    "config.disableDeepLinking": "true",
-    "config.fileRecordingsEnabled": "false",
-    "config.liveStreamingEnabled": "false",
-    "config.hiddenDomain": "",
-  });
-  return `${configuredJitsiOrigin()}/${encodeURIComponent(roomKey)}#${params.toString()}`;
+export function buildMeetingJoinSession(
+  roomKey: string,
+  options: { userId: string; displayName: string; moderator: boolean },
+  env: NodeJS.ProcessEnv = process.env,
+): MeetingJoinSession {
+  const setup = meetingProviderSetup(env);
+  if (!setup.secure || !setup.origin || !setup.host || !isJitsiOperatorVerified(env)) {
+    throw new MeetingError("provider_misconfigured");
+  }
+  return {
+    domain: setup.host,
+    origin: setup.origin,
+    roomName: roomKey,
+    displayName: options.displayName,
+    jwt: signJitsiJwt({
+      appId: env.JITSI_JWT_APP_ID!.trim(),
+      secret: env.JITSI_JWT_SECRET!.trim(),
+      issuer: env.JITSI_JWT_ISSUER,
+      host: setup.host,
+      room: roomKey,
+      userId: options.userId,
+      displayName: options.displayName,
+      moderator: options.moderator,
+    }),
+  };
 }
 
 async function hasMeetingAccess(userId: string, meetingId: string) {
@@ -122,9 +163,24 @@ export async function getMeetingForUser(userId: string, meetingId: string) {
     isHost &&
     permissions.includes("meeting.start");
   const canManageLifecycle = isHost && (permissions.includes("meeting.manage") || permissions.includes("meeting.start"));
+  const readiness = await resolveMeetingProviderReadiness();
+  const setupRequired =
+    !readiness.ready && meeting.status !== "cancelled" && meeting.status !== "completed";
+  const joinable = readiness.ready && meeting.status !== "cancelled" && meeting.status !== "completed";
+  let joinSession: MeetingJoinSession | null = null;
+  if (joinable) {
+    const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, userId) });
+    joinSession = buildMeetingJoinSession(meeting.roomKey, {
+      userId,
+      displayName: profile?.displayNameEn || profile?.displayNameAr || "Clinic member",
+      moderator: isHost,
+    });
+  }
   return {
     ...meeting,
-    embedUrl: meeting.status === "cancelled" || meeting.status === "completed" ? null : meetingEmbedUrl(meeting.roomKey),
+    joinSession,
+    setupRequired,
+    missingProviderConfig: setupRequired ? readiness.blockers : [],
     participantRole: participant?.role ?? null,
     canStart,
     canComplete: meeting.status === "live" && canManageLifecycle,

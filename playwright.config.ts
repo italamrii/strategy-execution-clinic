@@ -1,10 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
-import { existsSync } from "node:fs";
 
 const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3100";
-const localBrave = "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe";
-const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ??
-  (process.platform === "win32" && existsSync(localBrave) ? localBrave : undefined);
+const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
 
 if (process.env.E2E_ORCHESTRATED !== "true") {
   console.error(
@@ -34,12 +31,18 @@ export default defineConfig({
     baseURL,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    video: "off",
   },
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"], launchOptions: { executablePath } },
+      use: {
+        ...devices["Desktop Chrome"],
+        launchOptions: {
+          ...(executablePath ? { executablePath } : {}),
+          args: ["--use-gl=angle", "--enable-webgl", "--ignore-gpu-blocklist"],
+        },
+      },
     },
   ],
 });

@@ -16,6 +16,10 @@ export async function seedMembershipCatalog(): Promise<void> {
       type.slug === "founding_member" ||
       type.slug === "strategic_partner" ||
       type.slug === "institutional_member";
+    const lifetime =
+      type.slug === "founding_member" ||
+      type.slug === "strategic_partner" ||
+      type.slug === "institutional_member";
     if (existing) {
       continue;
     }
@@ -31,9 +35,9 @@ export async function seedMembershipCatalog(): Promise<void> {
       applicationsOpen: !invitationOnly,
       invitationOnly,
       visibility: "public",
-      validityMode: "lifetime",
-      validityDays: null,
-      renewalRequired: false,
+      validityMode: lifetime ? "lifetime" : "fixed_days",
+      validityDays: lifetime ? null : 365,
+      renewalRequired: !lifetime,
       sortOrder: index + 1,
     });
   }
@@ -67,6 +71,8 @@ export async function seedMembershipCatalog(): Promise<void> {
 
   const { seedTracksOperatingCatalog } = await import("@/modules/tracks");
   await seedTracksOperatingCatalog();
+  const { seedDefaultCardTemplate } = await import("@/modules/credentials");
+  await seedDefaultCardTemplate();
 }
 
 export async function listPublicMembershipTypes() {

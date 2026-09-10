@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { requireLocale } from "@/i18n/locale";
 import { resolvePageAccess } from "@/modules/identity";
-import { listMeetingsForUser } from "@/modules/meetings";
+import { listMeetingsForUser, resolveMeetingProviderReadiness } from "@/modules/meetings";
 import { MeetingCreateForm } from "@/modules/meetings/ui/meeting-create-form";
 import { AccessDenied } from "@/shared/ui/access-denied";
 import { redirect } from "@/i18n/navigation";
@@ -27,6 +27,7 @@ export default async function MeetingsPage({
     listMeetingsForUser(access.auth.userId),
   ]);
   const canCreate = access.auth.permissions.includes("meeting.create");
+  const provider = await resolveMeetingProviderReadiness();
   return (
     <main className="mx-auto max-w-5xl px-6 py-14">
       <p className="eyebrow">SEC · MEET</p>
@@ -50,7 +51,12 @@ export default async function MeetingsPage({
           <p className="rounded-2xl bg-stone p-6">{t("empty")}</p>
         )}
       </div>
-      {canCreate ? <MeetingCreateForm /> : null}
+      {canCreate ? (
+        <MeetingCreateForm
+          providerReady={provider.ready}
+          missingConfig={provider.blockers}
+        />
+      ) : null}
     </main>
   );
 }

@@ -47,12 +47,25 @@ export default async function MeetingPage({
         canComplete={meeting.canComplete}
         canCancel={meeting.canCancel}
       />
-      {meeting.embedUrl && meeting.status !== "cancelled" && meeting.status !== "completed" ? (
+      {meeting.setupRequired ? (
+        <div className="mt-8 border border-warning bg-surface p-6" role="status">
+          <h2 className="text-xl text-ink">{t("setupRequiredTitle")}</h2>
+          <p className="mt-2 text-graphite">
+            {meeting.consultationId ? t("setupRequiredPrivate") : t("setupRequired")}
+          </p>
+          <ul className="mt-3 list-disc ps-5 text-sm text-graphite">
+            {meeting.missingProviderConfig.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      ) : meeting.joinSession && meeting.status !== "cancelled" && meeting.status !== "completed" ? (
         <MeetingRoom
           meetingId={meeting.id}
-          title={meeting.title}
-          embedUrl={meeting.embedUrl}
-          allowVideo={meeting.allowVideo}
+          session={meeting.joinSession}
+          startWithCameraOff={!meeting.allowVideo}
+          lang={locale}
+          connectionFailedLabel={t("connectionFailed")}
         />
       ) : (
         <p className="mt-8 rounded-2xl bg-stone p-6 text-graphite">{t("roomUnavailable")}</p>

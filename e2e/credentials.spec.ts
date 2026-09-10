@@ -2,7 +2,32 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { mkdir } from "node:fs/promises";
 
-const SCREENSHOT_DIR = path.join("e2e", "screenshots");
+const SCREENSHOT_DIR = path.join("docs", "review", "pr-6");
+
+async function relativeLuminance(page: import("@playwright/test").Page, selector: string) {
+  return page.locator(selector).first().evaluate((el) => {
+    const color = getComputedStyle(el).color;
+    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!match) return 0;
+    const channels = match.slice(1, 4).map((value) => {
+      const channel = Number(value) / 255;
+      return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
+  });
+}
+
+async function setTheme(page: import("@playwright/test").Page, theme: "light" | "dark") {
+  await page.evaluate((next) => {
+    document.documentElement.setAttribute("data-theme", next);
+    try {
+      localStorage.setItem("clinic-theme", next);
+      document.cookie = `clinic-theme=${next}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    } catch {
+      // Ignore storage failures in constrained browsers.
+    }
+  }, theme);
+}
 
 async function login(page: import("@playwright/test").Page, locale: "ar" | "en", email: string) {
   await page.goto(`/${locale}/login`);
@@ -56,6 +81,35 @@ test.describe("credentials e2e", () => {
   });
 
   test("design gallery founding and volunteer fixtures", async ({ page }) => {
+    await page.goto("/ar");
+    await expect(page.getByRole("heading", { name: /نبني الاستراتيجية/ })).toBeVisible({
+      timeout: 20_000,
+    });
+    await page.screenshot({
+      path: path.join(SCREENSHOT_DIR, "home-ar-light.png"),
+      fullPage: false,
+    });
+    await page.getByRole("button", { name: /استخدام المظهر الداكن|Use dark theme/ }).click({ force: true });
+    await expect.poll(() => relativeLuminance(page, ".site-header__nav a")).toBeGreaterThan(0.55);
+    await expect.poll(() => relativeLuminance(page, ".header-login")).toBeGreaterThan(0.55);
+    await page.screenshot({
+      path: path.join(SCREENSHOT_DIR, "home-ar-dark.png"),
+      fullPage: false,
+    });
+    await page.getByRole("button", { name: /استخدام المظهر الفاتح|Use light theme/ }).click({ force: true });
+    await page.goto("/en");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await page.screenshot({
+      path: path.join(SCREENSHOT_DIR, "home-en-light.png"),
+      fullPage: false,
+    });
+    await page.getByRole("button", { name: /Use dark theme|استخدام المظهر الداكن/ }).click({ force: true });
+    await expect.poll(() => relativeLuminance(page, ".site-header__nav a")).toBeGreaterThan(0.55);
+    await page.screenshot({
+      path: path.join(SCREENSHOT_DIR, "home-en-dark.png"),
+      fullPage: false,
+    });
+    await page.getByRole("button", { name: /Use light theme|استخدام المظهر الفاتح/ }).click({ force: true });
     await page.goto("/en/design-preview/credentials");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByText("SEC-FND-2026-K7M4QX")).toBeVisible();
@@ -71,6 +125,7 @@ test.describe("credentials e2e", () => {
   });
 
   test("member credential wallet, exports, verification, and revoke", async ({ browser }) => {
+    test.setTimeout(240_000);
     const memberEmail = `cred-member-${Date.now()}@clinic.test`;
     const adminEmail = `cred-admin-${Date.now()}@clinic.test`;
     const strangerEmail = `cred-stranger-${Date.now()}@clinic.test`;
@@ -84,6 +139,34 @@ test.describe("credentials e2e", () => {
     const adminPage = await adminContext.newPage();
     await login(adminPage, "en", adminEmail);
     await approveLatestApplication(adminPage, adminEmail);
+    const grantDashboard = await adminPage.request.post("/api/test/grant-role", {
+      data: { email: adminEmail, role: "super_admin" },
+    });
+    expect(grantDashboard.ok(), await grantDashboard.text()).toBeTruthy();
+    await adminPage.goto("/en/admin");
+    await expect(adminPage.locator("[data-access=granted]")).toBeVisible({ timeout: 20_000 });
+    await adminPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "admin-dashboard-en.png"),
+      fullPage: true,
+    });
+    await setTheme(adminPage, "dark");
+    await adminPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "admin-dashboard-en-dark.png"),
+      fullPage: true,
+    });
+    await setTheme(adminPage, "light");
+    await adminPage.goto("/ar/admin");
+    await expect(adminPage.locator("[data-access=granted]")).toBeVisible({ timeout: 20_000 });
+    await adminPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "admin-dashboard-ar.png"),
+      fullPage: true,
+    });
+    await setTheme(adminPage, "dark");
+    await adminPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "admin-dashboard-ar-dark.png"),
+      fullPage: true,
+    });
+    await setTheme(adminPage, "light");
 
     await memberPage.goto("/en/account/membership");
     await expect(memberPage.getByText(/Active Membership|عضوية فعالة/i)).toBeVisible({
@@ -94,6 +177,38 @@ test.describe("credentials e2e", () => {
     await expect(memberPage.getByTestId("public-code")).toBeVisible({ timeout: 20_000 });
     await expect(memberPage.getByTestId("credential-qr")).toBeVisible();
     await expect(memberPage.getByTestId("membership-card")).toBeVisible();
+    await expect(memberPage.getByTestId("membership-card")).toContainText(/SEC-/);
+    await memberPage.goto("/en/account");
+    await expect(memberPage.getByText(/Your next professional step|خطوتك المهنية/)).toBeVisible({
+      timeout: 20_000,
+    });
+    await memberPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "member-dashboard-en.png"),
+      fullPage: true,
+    });
+    await setTheme(memberPage, "dark");
+    await memberPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "member-dashboard-en-dark.png"),
+      fullPage: true,
+    });
+    await setTheme(memberPage, "light");
+    await memberPage.goto("/ar/account");
+    await expect(memberPage.getByText(/خطوتك المهنية|Your next professional step/)).toBeVisible({
+      timeout: 20_000,
+    });
+    await memberPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "member-dashboard-ar.png"),
+      fullPage: true,
+    });
+    await setTheme(memberPage, "dark");
+    await memberPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "member-dashboard-ar-dark.png"),
+      fullPage: true,
+    });
+    await setTheme(memberPage, "light");
+
+    await memberPage.goto("/en/account/credential");
+    await expect(memberPage.getByTestId("public-code")).toBeVisible({ timeout: 20_000 });
     const codeText = (await memberPage.getByTestId("public-code").textContent())?.trim();
     expect(codeText).toMatch(/^SEC-/);
     const credentialId = await memberPage
@@ -106,6 +221,12 @@ test.describe("credentials e2e", () => {
       path: path.join(SCREENSHOT_DIR, "credential-en.png"),
       fullPage: true,
     });
+    await setTheme(memberPage, "dark");
+    await memberPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "credential-en-dark.png"),
+      fullPage: true,
+    });
+    await setTheme(memberPage, "light");
 
   // Prefer download click (same browser cookie jar) for authenticated exports.
     const [pngDownload] = await Promise.all([
@@ -134,7 +255,48 @@ test.describe("credentials e2e", () => {
     );
     expect(pngResponse.ok(), await pngResponse.text()).toBeTruthy();
     expect(pngResponse.headers()["content-type"]).toContain("image/png");
-    expect(pngResponse.headers()["content-disposition"] ?? "").toMatch(/sec-credential-/i);
+    expect(pngResponse.headers()["content-disposition"] ?? "").toMatch(/attachment;.*sec-credential-/i);
+
+    const embedResponse = await memberPage.request.get(
+      `/api/credentials/${credentialId}/export/png?locale=en&embed=1`,
+    );
+    expect(embedResponse.ok(), await embedResponse.text()).toBeTruthy();
+    expect(embedResponse.headers()["content-type"]).toContain("image/png");
+    expect(embedResponse.headers()["content-disposition"] ?? "").toMatch(/inline;.*sec-credential-/i);
+    expect((await embedResponse.body()).byteLength).toBeGreaterThan(2_000);
+
+    await memberPage.emulateMedia({ reducedMotion: "no-preference" });
+    await memberPage.setViewportSize({ width: 1440, height: 900 });
+    await memberPage.goto("/en/account/credential");
+    await expect(memberPage.getByTestId("membership-card")).toBeVisible({ timeout: 20_000 });
+    await expect(memberPage.getByTestId("public-code")).toBeVisible();
+    const card3d = memberPage.getByTestId("membership-card-3d-root");
+    await expect(card3d).toBeAttached({ timeout: 20_000 });
+    await expect
+      .poll(
+        async () =>
+          `${await card3d.getAttribute("data-3d-state")}|${await card3d.getAttribute("data-3d-reason")}`,
+        { timeout: 45_000 },
+      )
+      .toMatch(/^ready\|/);
+    const stage = memberPage.getByTestId("membership-card-3d");
+    await expect(stage.locator("canvas")).toBeVisible({ timeout: 15_000 });
+    const box = await stage.boundingBox();
+    expect(box, "3D stage has layout size").toBeTruthy();
+    await memberPage.mouse.move(box!.x + box!.width * 0.22, box!.y + box!.height * 0.28);
+    await memberPage.waitForTimeout(700);
+    await memberPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "credential-3d-tilt-en.png"),
+      fullPage: false,
+    });
+    await memberPage.getByTestId("membership-card-3d-flip").click();
+    await expect(card3d).toHaveAttribute("data-flipped", "true");
+    await memberPage.waitForTimeout(900);
+    await memberPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "credential-3d-flip-en.png"),
+      fullPage: false,
+    });
+    await expect(memberPage.getByTestId("membership-card")).toBeVisible();
 
     await expect(memberPage.getByRole("heading", { name: /Share membership/i })).toBeVisible();
     await expect(memberPage.getByRole("link", { name: /Share on LinkedIn/i })).toBeVisible();
@@ -155,6 +317,12 @@ test.describe("credentials e2e", () => {
       path: path.join(SCREENSHOT_DIR, "credential-ar.png"),
       fullPage: true,
     });
+    await setTheme(memberPage, "dark");
+    await memberPage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "credential-ar-dark.png"),
+      fullPage: true,
+    });
+    await setTheme(memberPage, "light");
 
     const mobile = await browser.newContext({
       viewport: { width: 390, height: 844 },
@@ -166,6 +334,12 @@ test.describe("credentials e2e", () => {
     await mobilePage.screenshot({
       path: path.join(SCREENSHOT_DIR, "credential-mobile-en.png"),
       fullPage: true,
+    });
+    await mobilePage.getByRole("button", { name: /Open menu|فتح القائمة/i }).click();
+    await setTheme(mobilePage, "dark");
+    await mobilePage.screenshot({
+      path: path.join(SCREENSHOT_DIR, "header-mobile-en-dark.png"),
+      fullPage: false,
     });
     await mobile.close();
 

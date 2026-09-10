@@ -6,12 +6,6 @@ import type { OwnCredentialDto } from "@/modules/credentials";
 import { CredentialCardStage } from "./credential-card-stage";
 import { TrackIdentityBadges } from "@/modules/tracks/ui/track-identity-badges";
 
-function statusClass(status: string) {
-  if (status === "active") return "text-success";
-  if (status === "suspended") return "text-warning";
-  return "text-danger";
-}
-
 export function StaticMembershipCard({
   credential,
   locale,
@@ -29,21 +23,60 @@ export function StaticMembershipCard({
       : track.nameEn
     : null;
 
+  const issued = new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : "en-GB", {
+    dateStyle: "medium",
+  }).format(new Date(credential.issuedAt));
+  const expiry = credential.expiresAt
+    ? new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : "en-GB", { dateStyle: "medium" }).format(
+        new Date(credential.expiresAt),
+      )
+    : t("noExpiry");
+
   return (
-    <article
-      className="relative mx-auto w-full max-w-xl border border-line-strong bg-surface p-8 shadow-rest"
-      aria-label={t("cardLabel")}
-      data-testid="membership-card"
-      data-credential-id={credential.id}
-    >
-      <p className="text-xs tracking-[0.18em] text-gold-deep">
-        {locale === "ar" ? "عيادة الاستراتيجية والتنفيذ" : "Strategy & Execution Clinic"}
-      </p>
-      <h2 className="mt-8 text-2xl text-ink">
-        {locale === "ar" ? credential.memberNameAr : credential.memberNameEn ?? credential.memberNameAr}
-      </h2>
-      <p className="mt-2 text-graphite">{typeName}</p>
-      {trackName ? <p className="mt-1 text-sm text-muted">{trackName}</p> : null}
+    <div className="mx-auto w-full max-w-xl space-y-4">
+      <article
+        className="membership-card-preview membership-card-live"
+        aria-label={t("cardLabel")}
+        data-testid="membership-card"
+        data-credential-id={credential.id}
+      >
+        <div className="membership-card-preview__top">
+          <span className="monogram">SEC</span>
+          <span>{typeName}</span>
+        </div>
+        <div className="membership-card-preview__body">
+          <p className="membership-card-preview__brand">
+            {locale === "ar" ? "عيادة الاستراتيجية والتنفيذ" : "Strategy & Execution Clinic"}
+          </p>
+          <strong>
+            {locale === "ar"
+              ? credential.memberNameAr
+              : credential.memberNameEn ?? credential.memberNameAr}
+          </strong>
+          {trackName ? <p>{trackName}</p> : null}
+          {credential.isGroupLeader ? (
+            <p className="mt-2 text-xs tracking-[0.18em]">{t("leaderBadge")}</p>
+          ) : null}
+          <p className="numeric mt-4" data-testid="public-code">
+            {credential.publicCode}
+          </p>
+          <p className="mt-2 text-xs opacity-80">
+            {t("issuedAt")}: {issued}
+          </p>
+          <p className="mt-1 text-xs opacity-80">
+            {t("expiresAt")}: {expiry}
+          </p>
+          <p className="mt-2 text-xs">{t(
+            credential.effectiveStatus === "active"
+              ? "statusActive"
+              : credential.effectiveStatus === "suspended"
+                ? "statusSuspended"
+                : credential.effectiveStatus === "expired"
+                  ? "statusExpired"
+                  : "statusRevoked",
+          )}</p>
+        </div>
+      </article>
       <TrackIdentityBadges
         locale={locale}
         primaryTrack={
@@ -54,21 +87,7 @@ export function StaticMembershipCard({
         isGroupLeader={credential.isGroupLeader}
         tracks={credential.tracks}
       />
-      <p className="numeric mt-8 text-sm tracking-wider text-gold-deep" data-testid="public-code">
-        {credential.publicCode}
-      </p>
-      <p className={`mt-2 text-sm ${statusClass(credential.effectiveStatus)}`}>
-        {t(
-          credential.effectiveStatus === "active"
-            ? "statusActive"
-            : credential.effectiveStatus === "suspended"
-              ? "statusSuspended"
-              : credential.effectiveStatus === "expired"
-                ? "statusExpired"
-                : "statusRevoked",
-        )}
-      </p>
-    </article>
+    </div>
   );
 }
 
@@ -114,11 +133,6 @@ export function CredentialWallet({
       ) : null}
 
       <CredentialCardStage credential={active} locale={locale} />
-
-      <p className="sr-only" data-testid="public-code">
-        {active.publicCode}
-      </p>
-      <span className="sr-only" data-testid="membership-card" data-credential-id={active.id} />
 
       <div className="flex flex-col items-center gap-3 border border-line bg-surface p-6">
         <p className="text-sm text-muted">{t("qrLabel")}</p>

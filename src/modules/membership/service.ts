@@ -30,6 +30,7 @@ import {
 } from "./dto";
 import { MembershipError } from "./errors";
 import type { ApplicationDraftInput } from "./schemas";
+import { ELEVATED_APPROVAL_SLUGS } from "./catalog";
 import {
   assertApplicationTransition,
   OPEN_APPLICATION_STATUSES,
@@ -194,6 +195,13 @@ export async function createApplication(input: {
       resourceType: "membership_application",
       resourceId: id,
       requestId: input.requestId,
+    });
+    const { notifyDomainEvent } = await import("@/modules/notifications");
+    await notifyDomainEvent({
+      eventType: "MEMBERSHIP_APPLICATION_SUBMITTED",
+      recipientUserId: input.actorUserId,
+      linkPath: "/account/membership",
+      idempotencyKey: `membership-submitted:${id}`,
     });
   }
   return id;
@@ -725,10 +733,14 @@ function computeEndsAt(
   type: typeof membershipTypes.$inferSelect,
   startsAt: Date,
 ): Date | null {
-  if (type.validityMode === "fixed_days" && type.validityDays) {
-    return new Date(startsAt.getTime() + type.validityDays * 86_400_000);
+  if (type.validityMode === "lifetime") {
+    return null;
   }
-  return null;
+  const days =
+    type.validityMode === "fixed_days" && type.validityDays && type.validityDays > 0
+      ? type.validityDays
+      : 365;
+  return new Date(startsAt.getTime() + days * 86_400_000);
 }
 
 async function issueMembershipInTx(input: {
@@ -755,6 +767,12 @@ async function issueMembershipInTx(input: {
         throw new MembershipError("application_not_found");
       }
       if (locked.status === "approved") {
+        const existing = await tx.query.memberships.findFirst({
+          where: eq(memberships.applicationId, input.applicationId),
+        });
+        if (existing) {
+          return existing.id;
+        }
         throw new MembershipError("already_approved");
       }
       if (locked.status !== "under_review") {
@@ -880,7 +898,7 @@ async function issueMembershipInTx(input: {
       await notifyDomainEvent({
         eventType: "MEMBERSHIP_APPROVED",
         recipientUserId: input.userId,
-        linkPath: "/account/membership",
+        linkPath: "/account/credential",
         idempotencyKey: `membership-approved:${input.applicationId}`,
       });
     }
@@ -898,6 +916,12 @@ export async function approveApplication(input: {
 }) {
   const actor = await requirePermission(input.actorUserId, "membership.application.approve");
   const app = await getApplicationOrThrow(input.applicationId);
+  const type = await getDb().query.membershipTypes.findFirst({
+    where: eq(membershipTypes.id, app.membershipTypeId),
+  });
+  if (type && ELEVATED_APPROVAL_SLUGS.has(type.slug)) {
+    await requirePermission(input.actorUserId, "membership.issue");
+  }
   assertCanApproveMembershipApplication(actor, { userId: app.userId });
   assertNotSelfApplicationReview(actor, { userId: app.userId });
 
