@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { requireLocale } from "@/i18n/locale";
 import { getOptionalAuthContext } from "@/modules/identity";
-import { getPublicTrackPage, TrackError } from "@/modules/tracks";
+import { getPublicTrackPage, TrackError, TRACK_CONTRIBUTION_TYPES } from "@/modules/tracks";
 import { TrackApplyForm } from "@/modules/tracks/ui/track-apply-form";
 import { notFound } from "next/navigation";
 
@@ -31,7 +31,7 @@ export default async function TrackDetailPage({
   const deputies = leaders.filter((row) => row.leadershipRole === "deputy");
 
   return (
-    <main id="main" className="mx-auto max-w-6xl px-6 py-16">
+    <main id="main" className="track-depth mx-auto max-w-6xl px-6 py-16">
       <Link href="/tracks" className="text-sm text-graphite hover:text-navy">
         {t("backToDirectory")}
       </Link>
@@ -97,6 +97,17 @@ export default async function TrackDetailPage({
             </p>
           )}
         </div>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="text-2xl text-navy">{t("contributionOpportunities")}</h2>
+        <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+          {TRACK_CONTRIBUTION_TYPES.map((item) => (
+            <li key={item.slug} className="border border-line bg-surface px-4 py-3 text-sm text-graphite">
+              {isAr ? item.nameAr : item.nameEn}
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="mt-12">

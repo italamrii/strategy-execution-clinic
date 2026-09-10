@@ -6,6 +6,8 @@ import {
   getPrivateAccount,
   getRolesForUser,
 } from "@/modules/identity";
+import { listOwnApplications, listOwnMemberships } from "@/modules/membership";
+import { listOwnCredentials } from "@/modules/credentials";
 
 export default async function AccountPage({
   params,
@@ -19,42 +21,45 @@ export default async function AccountPage({
   if (!auth) {
     redirect({ href: "/login", locale });
   }
-  const [account, roles, t, credentialT] = await Promise.all([
+  const [account, roles, t, memberships, applications, credentials] = await Promise.all([
     getPrivateAccount(auth!.userId),
     getRolesForUser(auth!.userId),
     getTranslations("account"),
-    getTranslations("credential"),
+    listOwnMemberships(auth!.userId),
+    listOwnApplications(auth!.userId),
+    listOwnCredentials(auth!.userId).catch(() => []),
   ]);
+  const latestApp = applications[0];
+  const active = memberships.find((item) => item.status === "active");
+  const card = credentials.find((item) => item.effectiveStatus === "active") ?? credentials[0];
+
+  let nextHref = "/membership/apply";
+  let nextKey: "nextApply" | "nextWait" | "nextUpdate" | "nextCard" | "nextContribute" = "nextApply";
+  if (latestApp?.status === "changes_requested") {
+    nextHref = "/membership/apply";
+    nextKey = "nextUpdate";
+  } else if (latestApp && ["submitted", "under_review"].includes(latestApp.status)) {
+    nextHref = "/account/membership";
+    nextKey = "nextWait";
+  } else if (active && card) {
+    nextHref = "/account/credential";
+    nextKey = "nextCard";
+  } else if (active) {
+    nextHref = "/account/tracks";
+    nextKey = "nextContribute";
+  }
 
   return (
     <main id="main" className="mx-auto max-w-6xl px-6 py-16">
       <h1 className="text-4xl text-ink">{t("title")}</h1>
-      <nav className="mt-6 flex flex-wrap gap-4 text-sm">
-          <Link href="/account" className="border-b border-gold text-navy">
-          {t("overview")}
+      <p className="mt-3 max-w-2xl text-graphite">{t("overviewLead")}</p>
+      <section className="mt-10 border border-line bg-surface p-8">
+        <p className="eyebrow">{t("nextStepEyebrow")}</p>
+        <h2 className="mt-2 text-2xl text-ink">{t(nextKey)}</h2>
+        <Link className="mt-6 inline-flex institutional-button institutional-button--primary" href={nextHref}>
+          {t("nextAction")}
         </Link>
-        <Link href="/account/membership" className="text-graphite hover:text-navy">
-          {t("membership")}
-        </Link>
-        <Link href="/account/credential" className="text-graphite hover:text-navy">
-          {credentialT("nav")}
-        </Link>
-        <Link href="/account/volunteer" className="text-graphite hover:text-navy">
-          {t("volunteer")}
-        </Link>
-        <Link href="/account/tracks" className="text-graphite hover:text-navy">
-          {t("tracks")}
-        </Link>
-        <Link href="/account/contributions" className="text-graphite hover:text-navy">
-          {t("contributions")}
-        </Link>
-        <Link href="/account/notifications" className="text-graphite hover:text-navy">
-          {t("notifications")}
-        </Link>
-        <Link href="/account/security" className="text-graphite hover:text-navy">
-          {t("security")}
-        </Link>
-      </nav>
+      </section>
       <dl className="mt-10 grid max-w-xl gap-4 border border-line bg-surface p-8 text-sm">
         <div className="flex justify-between gap-4">
           <dt className="text-muted">{t("email")}</dt>

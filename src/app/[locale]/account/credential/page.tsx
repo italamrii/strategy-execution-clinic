@@ -1,5 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Link, redirect } from "@/i18n/navigation";
+import { redirect } from "@/i18n/navigation";
 import { requireLocale } from "@/i18n/locale";
 import { getOptionalAuthContext } from "@/modules/identity";
 import { listOwnCredentials } from "@/modules/credentials";
@@ -17,29 +17,14 @@ export default async function AccountCredentialPage({
   if (!auth) {
     redirect({ href: "/login", locale });
   }
-  const [credentials, t, accountT] = await Promise.all([
+  const [credentials, t] = await Promise.all([
     listOwnCredentials(auth!.userId),
     getTranslations("credential"),
-    getTranslations("account"),
   ]);
 
   return (
     <main id="main" className="mx-auto max-w-6xl px-6 py-16">
       <h1 className="text-4xl text-ink">{t("accountTitle")}</h1>
-      <nav className="mt-6 flex flex-wrap gap-4 text-sm">
-        <Link href="/account" className="text-graphite hover:text-navy">
-          {accountT("overview")}
-        </Link>
-        <Link href="/account/membership" className="text-graphite hover:text-navy">
-          {accountT("membership")}
-        </Link>
-        <Link href="/account/credential" className="border-b border-gold text-navy">
-          {t("nav")}
-        </Link>
-        <Link href="/account/profile" className="text-graphite hover:text-navy">
-          {accountT("profile")}
-        </Link>
-      </nav>
       <div className="mt-12">
         <CredentialWallet credentials={credentials} locale={locale} />
       </div>

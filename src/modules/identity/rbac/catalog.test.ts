@@ -23,6 +23,8 @@ const REQUIRED_PERMISSIONS = [
   "meeting.start",
   "card.read.own",
   "card.template.manage",
+  "support.request.create",
+  "support.request.read.any",
   "credential.read.own",
   "credential.issue",
   "content.read",

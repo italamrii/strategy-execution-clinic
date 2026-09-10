@@ -22,6 +22,7 @@ const ADMIN_SHELL_PERMISSIONS = [
   "announcement.manage",
   "audit.read",
   "security.events.read",
+  "support.request.read.any",
 ] as const;
 
 export default async function AdminLayout({
@@ -48,7 +49,7 @@ export default async function AdminLayout({
           <h2>{t("title")}</h2>
           <p>{t("subtitle")}</p>
         </div>
-        <AdminNav />
+        <AdminNav permissions={auth.permissions} />
       </aside>
       <div className="admin-shell__content">{children}</div>
     </div>

@@ -59,6 +59,11 @@ export default async function ConsultationPage({
               key={message.id}
               className={`max-w-[85%] rounded-2xl p-4 ${message.authorUserId === access.auth.userId ? "ms-auto bg-navy text-white" : "bg-stone"}`}
             >
+              {message.kind && message.kind !== "message" ? (
+                <p className="mb-2 text-xs uppercase tracking-wide opacity-80">
+                  {message.kind === "deliverable" ? t("kindDeliverable") : t("kindFeedback")}
+                </p>
+              ) : null}
               <p>{message.body}</p>
               <time className="mt-2 block text-xs opacity-70">
                 {new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : "en-GB", { dateStyle: "short", timeStyle: "short" }).format(message.createdAt)}
@@ -73,6 +78,8 @@ export default async function ConsultationPage({
         consultationId={id}
         canManage={canManage}
         canCancel={data.request.requesterUserId === access.auth.userId && !["completed", "closed", "cancelled"].includes(data.request.status)}
+        canFeedback={data.request.requesterUserId === access.auth.userId && data.request.status === "completed"}
+        canClose={access.auth.permissions.includes("consultation.manage") && data.request.status === "completed"}
       />
       {canSchedule ? <MeetingCreateForm consultationId={id} /> : null}
     </main>

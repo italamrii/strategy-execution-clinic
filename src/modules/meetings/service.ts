@@ -15,6 +15,10 @@ function configuredJitsiOrigin() {
   return url.origin;
 }
 
+export function usesDefaultPublicJitsi() {
+  return !process.env.JITSI_DOMAIN?.trim();
+}
+
 export function meetingEmbedUrl(roomKey: string) {
   const params = new URLSearchParams({
     "config.prejoinPageEnabled": "true",

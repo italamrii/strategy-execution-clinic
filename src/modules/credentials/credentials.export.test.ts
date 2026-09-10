@@ -27,6 +27,8 @@ describe("credential exports", () => {
       publicCode: "SEC-PRO-2026-ABCDEF",
       statusLabel: "Active",
       issuedYear: 2026,
+      issuedAtLabel: "10 Sep 2026",
+      expiresAtLabel: "10 Sep 2027",
       typeSlug: "professional_member",
       qrSvg: '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>',
       showPhoto: false,

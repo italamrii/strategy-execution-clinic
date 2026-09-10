@@ -114,3 +114,29 @@ describe("public code validation", () => {
     expect(isValidPublicCodeFormat("bad-code")).toBe(false);
   });
 });
+
+describe("card svg", () => {
+  it("renders expiry and leader badge as visual content only", async () => {
+    const { renderCardFrontSvg } = await import("./card-svg");
+    const svg = renderCardFrontSvg({
+      locale: "en",
+      memberName: "Test Member",
+      membershipTypeAr: "عضو مهني",
+      membershipTypeEn: "Professional Member",
+      primaryTrackAr: "الاستراتيجية",
+      primaryTrackEn: "Strategy",
+      publicCode: "SEC-PRO-2026-ABCDEF",
+      statusLabel: "Active",
+      issuedYear: 2026,
+      issuedAtLabel: "10 Sep 2026",
+      expiresAtLabel: "10 Sep 2027",
+      typeSlug: "professional_member",
+      qrSvg: "<svg></svg>",
+      showPhoto: false,
+      isGroupLeader: true,
+    });
+    expect(svg).toContain("Valid until");
+    expect(svg).toContain("10 Sep 2027");
+    expect(svg).toContain("APPROVED TRACK LEADER");
+  });
+});

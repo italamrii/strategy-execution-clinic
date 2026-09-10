@@ -24,7 +24,19 @@
     "account": "Account",
     "admin": "Admin",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "howItWorks": "How it works",
+    "consultations": "Consultations",
+    "knowledge": "Knowledge",
+    "policies": "Policies",
+    "support": "Support",
+    "primary": "Primary"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "useLight": "Use light theme",
+    "useDark": "Use dark theme"
   },
   "home": {
     "eyebrow": "Strategy & Execution Clinic",
@@ -105,6 +117,7 @@
     "emptyTasks": "No assigned tasks.",
     "emptyApplications": "No pending applications.",
     "emptyQueue": "Review queue is clear.",
+    "contributionOpportunities": "Contribution opportunities",
     "applicationsClosed": "Applications are currently closed for this track.",
     "applicationsOpen": "Applications open",
     "loginToApply": "Sign in to apply for this track",
@@ -285,7 +298,15 @@
     "privateNote": "Email and private contact fields are never exposed through public verification surfaces.",
     "membership": "Membership",
     "consultations": "Consultations",
-    "meetings": "Meetings"
+    "meetings": "Meetings",
+    "overviewLead": "Your next professional step in the Clinic, based on the current record.",
+    "nextStepEyebrow": "Next step",
+    "nextApply": "Submit a membership application to begin review.",
+    "nextWait": "Your application is with reviewers. You will be notified of the decision.",
+    "nextUpdate": "Reviewers asked for more information. Update your application.",
+    "nextCard": "Your membership is active. Open your membership card.",
+    "nextContribute": "Join a track, contribute, or request a consultation.",
+    "nextAction": "Continue"
   },
   "membership": {
     "title": "Membership",
@@ -334,6 +355,8 @@
     "issuedAt": "Issued",
     "expiresAt": "Expires",
     "noExpiry": "No expiration",
+    "viewCard": "View membership card",
+    "submittedConfirm": "Your application was received. You can follow its status in your account.",
     "applicationsTitle": "Applications",
     "timeline": "Application timeline",
     "noApplications": "No applications yet.",
@@ -432,6 +455,9 @@
     "track": "Track",
     "memberSince": "Member since",
     "publicCode": "Membership code",
+    "issuedAt": "Issued",
+    "expiresAt": "Valid until",
+    "noExpiry": "No expiration",
     "qrLabel": "Verification QR",
     "qrAlt": "QR code linking to public verification",
     "qrHint": "Scan to verify membership status",
@@ -669,7 +695,8 @@
     "announcements": "Announcements",
     "audit": "Audit",
     "security": "Security",
-    "settings": "Settings"
+    "settings": "Settings",
+    "support": "Support"
   },
   "adminDashboard": {
     "accessExplanation": "You are signed in with the account below, but it does not have dashboard access. Check that you are using the correct administrator account. Refreshing the page does not change permissions.",
@@ -742,6 +769,11 @@
     "assign": "Assign",
     "assigned": "Assigned to",
     "forbidden": "Forbidden",
+    "close": "Close consultation",
+    "messageKind": "Message type",
+    "kindMessage": "Message",
+    "kindDeliverable": "Deliverable",
+    "kindFeedback": "Feedback",
     "status": { "submitted": "New", "assigned": "Assigned", "in_progress": "In progress", "completed": "Completed", "closed": "Closed", "cancelled": "Cancelled" }
   },
   "meetings": {
@@ -756,6 +788,7 @@
     "create": "Create room",
     "failed": "Could not create the meeting.",
     "deviceNote": "Your browser will ask for microphone and camera access when you enter.",
+    "publicProviderNote": "This room uses the public Jitsi service. Set JITSI_DOMAIN for a dedicated meeting host.",
     "adminTitle": "Meeting management",
     "openRoom": "Open meeting room",
     "roomUnavailable": "This meeting is not available to join.",
@@ -774,6 +807,7 @@
   "cardTemplates": {
     "title": "Membership card templates",
     "description": "Change card appearance without changing the membership, member number, or verification code.",
+    "futureNote": "Activating a template changes the visual design of future downloads. Existing membership numbers and verification codes stay the same. Cards are not duplicated.",
     "forbidden": "Forbidden",
     "nameAr": "Arabic template name",
     "nameEn": "English template name",
@@ -804,7 +838,9 @@
     "saved": "Saved.",
     "failed": "Failed.",
     "draft": "Draft",
-    "published": "Published"
+    "published": "Published",
+    "unresolved": "Unresolved factual fields — do not publish as final until completed.",
+    "needsReview": "Needs administrator review before publication."
   },
   "adminSettings": {
     "title": "Settings",
@@ -883,8 +919,61 @@
   "publicPages": {
     "aboutTitle": "About the Clinic",
     "aboutFallback": "Content is being prepared.",
-    "contactTitle": "Contact",
-    "contactFallback": "support@clinic.test",
-    "contactNote": "For security, we do not relay open email from this form."
+    "contactTitle": "Support",
+    "contactFallback": "Use the internal support form. No public email is published.",
+    "contactNote": "Requests go to authorized administrators. Reply email is stored privately."
+  },
+  "support": {
+    "title": "Support and requests",
+    "intro": "There is no public contact email. Send a request; authorized administrators receive it.",
+    "category": "Request category",
+    "subject": "Subject",
+    "message": "Details",
+    "replyEmail": "Private reply email",
+    "submit": "Send request",
+    "sending": "Sending…",
+    "submitted": "Your request was received. Administrators will review it from the operations workspace.",
+    "adminTitle": "Support requests",
+    "adminNote": "Reply addresses are operational data. They are not shown on public pages.",
+    "adminEmpty": "No support requests yet.",
+    "categories": {
+      "general": "General",
+      "membership": "Membership",
+      "consultation": "Consultation",
+      "privacy": "Privacy inquiry",
+      "technical": "Technical"
+    },
+    "status": {
+      "open": "Open",
+      "in_progress": "In progress",
+      "resolved": "Resolved"
+    },
+    "errors": {
+      "generic": "Could not send the request.",
+      "invalid_input": "Check the form and try again.",
+      "rate_limited": "Too many requests. Try again later.",
+      "not_found": "Request not found."
+    }
+  },
+  "policies": {
+    "indexTitle": "Policies",
+    "indexBody": "These documents describe how the platform actually operates. Drafts remain unpublished until an administrator reviews them.",
+    "underReview": "This policy is under administrative review and is not yet published as a final document.",
+    "missingTitle": "Policy",
+    "draftBadge": "draft",
+    "consentPrompt": "Record that you have read this published version.",
+    "consentAccept": "I have read this version",
+    "consentSaved": "Your consent was recorded."
+  },
+  "journey": {
+    "howTitle": "How participation works",
+    "howFallback": "Discover the Clinic, choose a track, apply, wait for review, then use your card and workspace.",
+    "consultationsTitle": "Professional consultations",
+    "consultationsFallback": "Consultations are private to the requester, assigned expert, and authorized administrators.",
+    "openConsultations": "Open my consultations",
+    "knowledgeTitle": "Knowledge and resources",
+    "knowledgeFallback": "Published track resources appear here after review.",
+    "trackResources": "Track resources",
+    "knowledgeEmpty": "No published resources yet."
   }
 }

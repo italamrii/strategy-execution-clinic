@@ -42,6 +42,10 @@ export function ContentAdminForm({ blocks }: { blocks: Block[] }) {
           }}
         >
           <p className="font-mono text-sm text-muted">{block.slug}</p>
+          {(block.bodyAr.includes("[[UNRESOLVED:") || block.bodyEn.includes("[[UNRESOLVED:")) ? (
+            <p className="mt-2 text-sm text-warning">{t("unresolved")}</p>
+          ) : null}
+          {block.status === "draft" ? <p className="mt-2 text-sm text-muted">{t("needsReview")}</p> : null}
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             <input name="titleAr" defaultValue={block.titleAr} className="border border-line p-2" dir="rtl" />
             <input name="titleEn" defaultValue={block.titleEn} className="border border-line p-2" />

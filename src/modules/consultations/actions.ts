@@ -34,10 +34,18 @@ export async function createConsultationAction(input: {
   } catch (error) { return fail(error); }
 }
 
-export async function addConsultationMessageAction(input: { consultationId: string; body: string }): Promise<ConsultationActionResult> {
+export async function addConsultationMessageAction(input: {
+  consultationId: string;
+  body: string;
+  kind?: "message" | "deliverable" | "feedback";
+}): Promise<ConsultationActionResult> {
   try {
     const auth = await requireAuthenticatedUser();
-    const parsed = z.object({ consultationId: z.string().uuid(), body: z.string().min(1).max(12000) }).parse(input);
+    const parsed = z.object({
+      consultationId: z.string().uuid(),
+      body: z.string().min(1).max(12000),
+      kind: z.enum(["message", "deliverable", "feedback"]).optional(),
+    }).parse(input);
     const result = await addConsultationMessage({ actorUserId: auth.userId, ...parsed, requestId: auth.requestId });
     return { ok: true, id: result.id };
   } catch (error) { return fail(error); }

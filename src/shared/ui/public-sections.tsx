@@ -1,4 +1,5 @@
 import { Link } from "@/i18n/navigation";
+import { HeroScene } from "@/shared/three/hero-scene";
 
 export function SectionHeader({
   index,
@@ -54,6 +55,7 @@ export function Hero({
           </div>
           <p className="home-hero__trust">{trust}</p>
         </div>
+        <HeroScene />
       </div>
       <div className="home-hero__rule" aria-hidden />
     </section>
@@ -144,14 +146,3 @@ export function VolunteerJourney({ steps }: { steps: string[] }) {
   );
 }
 
-export function SiteFooter({ label, about, contact, verify }: { label: string; about: string; contact: string; verify: string }) {
-  return (
-    <footer className="site-footer">
-      <div className="site-container site-footer__grid">
-        <div className="wordmark wordmark--footer"><strong>عيادة الاستراتيجية والتنفيذ</strong><span>STRATEGY &amp; EXECUTION CLINIC</span></div>
-        <p>{label}</p>
-        <nav aria-label={label}><Link href="/about">{about}</Link><Link href="/contact">{contact}</Link><Link href="/verify">{verify}</Link></nav>
-      </div>
-    </footer>
-  );
-}

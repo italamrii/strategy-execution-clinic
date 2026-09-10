@@ -31,11 +31,17 @@ export async function buildCardRenderInput(
     statusLabel,
     issuedYear: ctx.credential.issuedAt.getFullYear(),
     issuedAtLabel: new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : "en-GB", { dateStyle: "medium" }).format(ctx.credential.issuedAt),
+    expiresAtLabel: (ctx.credential.expiresAt ?? ctx.membership.endsAt)
+      ? new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : "en-GB", { dateStyle: "medium" }).format(
+          ctx.credential.expiresAt ?? ctx.membership.endsAt!,
+        )
+      : undefined,
     typeSlug: ctx.type?.slug ?? "professional_member",
     qrSvg,
     showPhoto: ctx.profile?.visibility === "public",
     photoDataUrl: null,
     design: template?.config ?? null,
+    isGroupLeader: identity.isGroupLeader,
   };
 }
 

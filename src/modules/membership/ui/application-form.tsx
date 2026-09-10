@@ -19,6 +19,7 @@ export function ApplicationForm({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
   const [selectedTracks, setSelectedTracks] = useState<string[]>([]);
   const eligible = useMemo(
     () => types.filter((type) => type.applicationsOpen && !type.invitationOnly),
@@ -27,6 +28,9 @@ export function ApplicationForm({
 
   if (eligible.length === 0) {
     return <p className="text-graphite">{t("noEligibleTypes")}</p>;
+  }
+  if (done) {
+    return <p className="mt-10 border border-line bg-surface p-6 text-ink" role="status">{t("submittedConfirm")}</p>;
   }
 
   function toggleTrack(id: string) {
@@ -73,8 +77,12 @@ export function ApplicationForm({
             setError(t(`errors.${code}`));
             return;
           }
-          router.push("/account/membership");
-          router.refresh();
+          setError(null);
+          setDone(true);
+          window.setTimeout(() => {
+            router.push("/account/membership");
+            router.refresh();
+          }, 1200);
         });
       }}
     >

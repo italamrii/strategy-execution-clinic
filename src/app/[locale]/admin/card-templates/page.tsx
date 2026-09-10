@@ -26,6 +26,7 @@ export default async function CardTemplatesPage({
     <main className="mx-auto max-w-6xl px-6 py-14">
       <h1 className="text-4xl text-ink">{t("title")}</h1>
       <p className="mt-3 text-graphite">{t("description")}</p>
+      <p className="mt-2 text-sm text-muted">{t("futureNote")}</p>
       {templates.map((row) => (
         <CardTemplateForm key={row.id} template={{ ...row, config: row.config as CardDesign }} />
       ))}

@@ -12,11 +12,13 @@ export type CardRenderInput = {
   statusLabel: string;
   issuedYear: number;
   issuedAtLabel?: string;
+  expiresAtLabel?: string;
   typeSlug: string;
   qrSvg: string;
   showPhoto: boolean;
   photoDataUrl?: string | null;
   design?: CardDesign | null;
+  isGroupLeader?: boolean;
 };
 
 export type CardDesign = {
@@ -112,6 +114,12 @@ export function renderCardFrontSvg(input: CardRenderInput, width = 1600, height 
     (isAr ? input.primaryTrackEn : input.primaryTrackAr) ??
     "";
   const dir = isAr ? "rtl" : "ltr";
+  const leaderMark = input.isGroupLeader
+    ? `<text x="${width / 2}" y="430" fill="${accent}" font-family="IBM Plex Sans, sans-serif" font-size="20" letter-spacing="4" text-anchor="middle">${isAr ? "شارة قائد مسار معتمدة" : "APPROVED TRACK LEADER"}</text>`
+    : "";
+  const expiryLine = input.expiresAtLabel
+    ? `<text x="${isAr ? width - 160 : 160}" y="870" fill="${muted}" font-family="Noto Sans Arabic, sans-serif" font-size="22" text-anchor="${isAr ? "end" : "start"}">${isAr ? "تاريخ الانتهاء" : "Valid until"}</text><text x="${isAr ? width - 500 : 500}" y="870" fill="${text}" font-family="IBM Plex Sans, sans-serif" font-size="25" text-anchor="${isAr ? "end" : "start"}">${escapeXml(input.expiresAtLabel)}</text>`
+    : `<text x="${isAr ? width - 160 : 160}" y="870" fill="${muted}" font-family="Noto Sans Arabic, sans-serif" font-size="22" text-anchor="${isAr ? "end" : "start"}">${isAr ? "الصلاحية" : "Validity"}</text><text x="${isAr ? width - 500 : 500}" y="870" fill="${text}" font-family="IBM Plex Sans, sans-serif" font-size="25" text-anchor="${isAr ? "end" : "start"}">${isAr ? "مدى الحياة" : "Lifetime"}</text>`;
   const tagline = isAr
     ? design.frontTaglineAr ?? "من التشخيص... إلى التنفيذ... إلى الأثر"
     : design.frontTaglineEn ?? "From diagnosis to execution to impact";
@@ -141,6 +149,7 @@ export function renderCardFrontSvg(input: CardRenderInput, width = 1600, height 
   <text x="${width / 2}" y="245" fill="${accent}" font-family="IBM Plex Sans, sans-serif" font-size="22" letter-spacing="7" text-anchor="middle">PROFESSIONAL</text>
   <text x="${width / 2}" y="330" fill="${accent}" font-family="IBM Plex Sans, sans-serif" font-size="62" font-weight="700" letter-spacing="8" text-anchor="middle">${escapeXml(typeName.toUpperCase())}</text>
   <text x="${width / 2}" y="385" fill="${muted}" font-family="Noto Sans Arabic, sans-serif" font-size="24" text-anchor="middle">${escapeXml(tagline)}</text>
+  ${leaderMark}
   <text x="${isAr ? width - 160 : 160}" y="565" fill="${text}" font-family="Noto Sans Arabic, IBM Plex Sans, sans-serif" font-size="48" font-weight="600" text-anchor="${isAr ? "end" : "start"}">${escapeXml(input.memberName)}</text>
   ${
     track
@@ -151,6 +160,7 @@ export function renderCardFrontSvg(input: CardRenderInput, width = 1600, height 
   <text x="${isAr ? width - 160 : 160}" y="750" fill="${muted}" font-family="Noto Sans Arabic, sans-serif" font-size="22" text-anchor="${isAr ? "end" : "start"}">${isAr ? "رقم العضوية" : "Member ID"}</text>
   <text x="${isAr ? width - 500 : 500}" y="750" fill="${text}" font-family="IBM Plex Sans, monospace" font-size="27" text-anchor="${isAr ? "end" : "start"}">${escapeXml(input.publicCode)}</text>
   ${design.showMemberSince === false ? "" : `<text x="${isAr ? width - 160 : 160}" y="815" fill="${muted}" font-family="Noto Sans Arabic, sans-serif" font-size="22" text-anchor="${isAr ? "end" : "start"}">${isAr ? "تاريخ الانضمام" : "Member since"}</text><text x="${isAr ? width - 500 : 500}" y="815" fill="${text}" font-family="IBM Plex Sans, sans-serif" font-size="25" text-anchor="${isAr ? "end" : "start"}">${escapeXml(input.issuedAtLabel ?? String(input.issuedYear))}</text>`}
+  ${expiryLine}
   <g transform="translate(${width - 360}, 610) scale(.78)">${input.qrSvg.replace(/<\?xml[^>]*>/, "").trim()}</g>
   ${design.showSeal === false ? "" : `<circle cx="${width - 235}" cy="430" r="92" fill="none" stroke="${accent}" stroke-width="5"/><circle cx="${width - 235}" cy="430" r="70" fill="none" stroke="${accent}" stroke-width="2"/><text x="${width - 235}" y="422" fill="${accent}" font-size="45" text-anchor="middle">✓</text><text x="${width - 235}" y="466" fill="${accent}" font-family="IBM Plex Sans" font-size="17" text-anchor="middle">APPROVED MEMBER</text>`}
   <text x="80" y="${height - 65}" fill="${muted}" font-family="IBM Plex Sans Arabic, sans-serif" font-size="18">${escapeXml(input.statusLabel)} · ${input.issuedYear}</text>

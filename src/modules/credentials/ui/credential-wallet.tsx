@@ -57,6 +57,15 @@ export function StaticMembershipCard({
       <p className="numeric mt-8 text-sm tracking-wider text-gold-deep" data-testid="public-code">
         {credential.publicCode}
       </p>
+      <p className="mt-3 text-sm text-muted">
+        {t("issuedAt")}: {new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : "en-GB", { dateStyle: "medium" }).format(new Date(credential.issuedAt))}
+      </p>
+      <p className="mt-1 text-sm text-muted">
+        {t("expiresAt")}:{" "}
+        {credential.expiresAt
+          ? new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : "en-GB", { dateStyle: "medium" }).format(new Date(credential.expiresAt))
+          : t("noExpiry")}
+      </p>
       <p className={`mt-2 text-sm ${statusClass(credential.effectiveStatus)}`}>
         {t(
           credential.effectiveStatus === "active"

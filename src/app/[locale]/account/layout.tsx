@@ -28,7 +28,6 @@ export default async function AccountLayout({
         profile: account("profile"),
         membership: account("membership"),
         credential: credential("nav"),
-        volunteer: account("volunteer"),
         tracks: account("tracks"),
         contributions: account("contributions"),
         consultations: account("consultations"),

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireLocale } from "@/i18n/locale";
 import { redirect as localeRedirect } from "@/i18n/navigation";
 import { resolvePageAccess } from "@/modules/identity";
-import { getMeetingForUser, MeetingError } from "@/modules/meetings";
+import { getMeetingForUser, MeetingError, usesDefaultPublicJitsi } from "@/modules/meetings";
 import { MeetingRoom } from "@/modules/meetings/ui/meeting-room";
 import { MeetingStatusActions } from "@/modules/meetings/ui/meeting-status-actions";
 import { AccessDenied } from "@/shared/ui/access-denied";
@@ -40,6 +40,7 @@ export default async function MeetingPage({
       <p className="eyebrow">SEC · MEET</p>
       <h1 className="mt-3 text-4xl text-ink">{meeting.title}</h1>
       <p className="mt-3 text-graphite">{t("deviceNote")}</p>
+      {usesDefaultPublicJitsi() ? <p className="mt-2 text-sm text-muted">{t("publicProviderNote")}</p> : null}
       <p className="mt-2 text-sm text-muted">{statusLabel}</p>
       <MeetingStatusActions
         meetingId={meeting.id}

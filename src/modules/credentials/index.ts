@@ -42,3 +42,4 @@ export {
   svgToPng,
 } from "./export";
 export { escapeXml } from "./escape";
+export { DEFAULT_CARD_DESIGN, getActiveCardTemplate, listCardTemplatesForAdmin, saveCardTemplate, seedDefaultCardTemplate } from "./templates";

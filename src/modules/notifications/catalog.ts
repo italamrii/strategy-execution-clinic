@@ -131,8 +131,8 @@ export const IN_APP_COPY: Record<
   MEMBERSHIP_APPROVED: {
     titleAr: "تمت الموافقة على العضوية",
     titleEn: "Membership approved",
-    bodyAr: "تهانينا! تمت الموافقة على عضويتك.",
-    bodyEn: "Congratulations! Your membership was approved.",
+    bodyAr: "تهانينا! تمت الموافقة على عضويتك. بطاقة العضوية جاهزة في حسابك.",
+    bodyEn: "Congratulations! Your membership was approved. Your membership card is ready in your account.",
   },
   MEMBERSHIP_REJECTED: {
     titleAr: "لم تُقبل العضوية",

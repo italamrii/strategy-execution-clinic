@@ -4,15 +4,14 @@ import { Link, usePathname } from "@/i18n/navigation";
 
 const LINKS = [
   ["/account", "overview"],
-  ["/account/profile", "profile"],
   ["/account/membership", "membership"],
   ["/account/credential", "credential"],
-  ["/account/volunteer", "volunteer"],
   ["/account/tracks", "tracks"],
   ["/account/contributions", "contributions"],
   ["/account/consultations", "consultations"],
   ["/account/meetings", "meetings"],
   ["/account/notifications", "notifications"],
+  ["/account/profile", "profile"],
   ["/account/security", "security"],
 ] as const;
 
@@ -47,7 +46,7 @@ export function MemberShell({
                 aria-current={current ? "page" : undefined}
                 className={current ? "is-active" : undefined}
               >
-                <span className="numeric">0{index + 1}</span>
+                <span className="numeric">{String(index + 1).padStart(2, "0")}</span>
                 {labels[key]}
               </Link>
             );

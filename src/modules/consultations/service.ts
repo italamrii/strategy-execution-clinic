@@ -118,6 +118,7 @@ export async function addConsultationMessage(input: {
   actorUserId: string;
   consultationId: string;
   body: string;
+  kind?: "message" | "deliverable" | "feedback";
   requestId?: string | null;
 }) {
   const db = getDb();
@@ -127,17 +128,26 @@ export async function addConsultationMessage(input: {
   if (!request) throw new ConsultationError("not_found");
   if (!(await canAccess(input.actorUserId, request))) throw new ConsultationError("forbidden");
   if (["closed", "cancelled"].includes(request.status)) throw new ConsultationError("closed");
+  const kind = input.kind ?? "message";
+  if (kind === "deliverable" && request.assignedExpertUserId !== input.actorUserId) {
+    const permissions = await getPermissionsForUser(input.actorUserId);
+    if (!permissions.includes("consultation.manage")) throw new ConsultationError("forbidden");
+  }
+  if (kind === "feedback" && request.requesterUserId !== input.actorUserId) {
+    throw new ConsultationError("forbidden");
+  }
   const id = uuidv7();
   await db.insert(consultationMessages).values({
     id,
     requestId: request.id,
     authorUserId: input.actorUserId,
     body: sanitizeRichText(input.body),
+    kind,
   });
   await db.update(consultationRequests).set({ updatedAt: new Date() }).where(eq(consultationRequests.id, request.id));
   await writeAudit({
     actorUserId: input.actorUserId,
-    action: "CONSULTATION_MESSAGE_ADDED",
+    action: kind === "deliverable" ? "CONSULTATION_DELIVERABLE_ADDED" : kind === "feedback" ? "CONSULTATION_FEEDBACK_ADDED" : "CONSULTATION_MESSAGE_ADDED",
     resourceType: "consultation",
     resourceId: request.id,
     requestId: input.requestId,
@@ -172,6 +182,33 @@ export async function assignConsultation(input: {
     requestId: input.requestId,
     after: { expertUserId: input.expertUserId },
   });
+  const { notifyDomainEvent } = await import("@/modules/notifications");
+  await notifyDomainEvent({
+    eventType: "SYSTEM_ANNOUNCEMENT",
+    recipientUserId: request.requesterUserId,
+    linkPath: `/account/consultations/${input.consultationId}`,
+    idempotencyKey: `consultation-assigned:${input.consultationId}`,
+    inAppOverride: {
+      titleAr: "تم تعيين خبير لاستشارتك",
+      titleEn: "An expert was assigned to your consultation",
+      bodyAr: "يمكنك متابعة المحادثة وجدولة اللقاء من مساحة الاستشارات.",
+      bodyEn: "You can continue the conversation and schedule a meeting from your consultations workspace.",
+    },
+  });
+  if (input.expertUserId !== input.actorUserId) {
+    await notifyDomainEvent({
+      eventType: "SYSTEM_ANNOUNCEMENT",
+      recipientUserId: input.expertUserId,
+      linkPath: `/account/consultations/${input.consultationId}`,
+      idempotencyKey: `consultation-assigned-expert:${input.consultationId}`,
+      inAppOverride: {
+        titleAr: "أُسندت إليك استشارة",
+        titleEn: "A consultation was assigned to you",
+        bodyAr: "راجع الطلب وابدأ العمل أو حدّد موعد اللقاء.",
+        bodyEn: "Review the request, start work, or schedule the meeting.",
+      },
+    });
+  }
 }
 
 export async function updateConsultationStatus(input: {

@@ -3,61 +3,13 @@ import { v7 as uuidv7 } from "uuid";
 import { writeAudit } from "@/modules/audit";
 import { requirePermission } from "@/modules/identity";
 import { getDb } from "@/shared/db/client";
-import { contentBlocks } from "@/shared/db/schema";
+import { consentRecords, contentBlocks } from "@/shared/db/schema";
 import { sanitizeRichText, sanitizePlainText } from "@/modules/notifications/sanitize";
+import { CONTENT_SEEDS } from "./editorial";
 
+export { CONTENT_SEEDS, contentHasUnresolvedFields } from "./editorial";
 export const CONTENT_KINDS = ["PAGE", "SECTION", "FAQ"] as const;
 export type ContentKind = (typeof CONTENT_KINDS)[number];
-
-export const CONTENT_SEEDS = [
-  {
-    slug: "home.hero",
-    kind: "SECTION" as const,
-    titleAr: "نبني الاستراتيجية...\nونحوّلها إلى أثر قابل للقياس",
-    titleEn: "We build strategy...\nand turn it into measurable impact.",
-    bodyAr:
-      "منظومة مهنية تجمع الخبرات في الاستراتيجية والتنفيذ والأداء، وتحوّل المعرفة والمساهمة والتطوع إلى أثر مهني موثّق.",
-    bodyEn:
-      "A professional ecosystem that unites expertise in strategy, execution, and performance — and turns knowledge, contribution, and volunteering into verified professional impact.",
-    sortOrder: 10,
-  },
-  {
-    slug: "about.clinic",
-    kind: "PAGE" as const,
-    titleAr: "عن العيادة",
-    titleEn: "About the Clinic",
-    bodyAr: "عيادة الاستراتيجية والتنفيذ منظومة مهنية للأفراد العاملين في الاستراتيجية والتنفيذ والأداء والتميز المؤسسي.",
-    bodyEn: "Strategy & Execution Clinic is a professional ecosystem for people working in strategy, execution, performance, and institutional excellence.",
-    sortOrder: 20,
-  },
-  {
-    slug: "legal.privacy",
-    kind: "PAGE" as const,
-    titleAr: "سياسة الخصوصية",
-    titleEn: "Privacy Policy",
-    bodyAr: "[مسودة إدارية — تتطلب اعتماداً قانونياً نهائياً] توضح هذه الصفحة كيفية معالجة بيانات الأعضاء وفق سجل العيادة المعتمد.",
-    bodyEn: "[Administrative draft — final legal approval required] This page describes how member data is handled according to the Clinic's authoritative records.",
-    sortOrder: 30,
-  },
-  {
-    slug: "legal.terms",
-    kind: "PAGE" as const,
-    titleAr: "شروط الاستخدام",
-    titleEn: "Terms of Use",
-    bodyAr: "[مسودة إدارية — تتطلب اعتماداً قانونياً نهائياً] استخدام المنصة يخضع لسياسات العيادة المعتمدة.",
-    bodyEn: "[Administrative draft — final legal approval required] Use of the platform is governed by Clinic policies.",
-    sortOrder: 40,
-  },
-  {
-    slug: "contact.info",
-    kind: "SECTION" as const,
-    titleAr: "تواصل معنا",
-    titleEn: "Contact",
-    bodyAr: "support@clinic.test",
-    bodyEn: "support@clinic.test",
-    sortOrder: 50,
-  },
-] as const;
 
 /** Previous factory copy only. Never overwrite admin-edited blocks. */
 const LEGACY_FACTORY_HOME_HERO = {
@@ -67,7 +19,7 @@ const LEGACY_FACTORY_HOME_HERO = {
   bodyEn: "A professional ecosystem for membership, volunteering, and verifiable credentials.",
 } as const;
 
-function isLegacyFactoryHomeHero(row: {
+function shouldRefreshFactoryCopy(row: {
   slug: string;
   titleAr: string;
   titleEn: string;
@@ -75,14 +27,23 @@ function isLegacyFactoryHomeHero(row: {
   bodyEn: string;
   updatedBy: string | null;
 }) {
-  if (row.slug !== "home.hero") return false;
   if (row.updatedBy) return false;
-  return (
-    row.titleAr === LEGACY_FACTORY_HOME_HERO.titleAr &&
-    row.titleEn === LEGACY_FACTORY_HOME_HERO.titleEn &&
-    row.bodyAr === LEGACY_FACTORY_HOME_HERO.bodyAr &&
-    row.bodyEn === LEGACY_FACTORY_HOME_HERO.bodyEn
-  );
+  if (row.slug === "home.hero") {
+    return (
+      row.titleAr === LEGACY_FACTORY_HOME_HERO.titleAr &&
+      row.titleEn === LEGACY_FACTORY_HOME_HERO.titleEn &&
+      row.bodyAr === LEGACY_FACTORY_HOME_HERO.bodyAr &&
+      row.bodyEn === LEGACY_FACTORY_HOME_HERO.bodyEn
+    );
+  }
+  if (row.slug === "contact.info") {
+    return row.bodyAr.includes("@") || row.bodyEn.includes("@");
+  }
+  if (row.slug === "about.clinic" && row.bodyAr.length < 180) return true;
+  if ((row.slug === "legal.privacy" || row.slug === "legal.terms") && !row.bodyAr.includes("[[UNRESOLVED:")) {
+    return row.bodyAr.startsWith("[مسودة") || row.bodyEn.startsWith("[Administrative draft");
+  }
+  return false;
 }
 
 export async function seedContentCatalog() {
@@ -100,13 +61,13 @@ export async function seedContentCatalog() {
         titleEn: seed.titleEn,
         bodyAr: seed.bodyAr,
         bodyEn: seed.bodyEn,
-        status: "published",
+        status: seed.status,
         sortOrder: seed.sortOrder,
-        publishedAt: new Date(),
+        publishedAt: seed.status === "published" ? new Date() : null,
       });
       continue;
     }
-    if (isLegacyFactoryHomeHero(existing)) {
+    if (shouldRefreshFactoryCopy(existing)) {
       await db
         .update(contentBlocks)
         .set({
@@ -114,11 +75,51 @@ export async function seedContentCatalog() {
           titleEn: seed.titleEn,
           bodyAr: seed.bodyAr,
           bodyEn: seed.bodyEn,
+          status: seed.status,
+          publishedAt: seed.status === "published" ? existing.publishedAt ?? new Date() : null,
           updatedAt: new Date(),
         })
         .where(eq(contentBlocks.id, existing.id));
     }
   }
+}
+
+export async function getContentBySlug(slug: string) {
+  const db = getDb();
+  return db.query.contentBlocks.findFirst({
+    where: eq(contentBlocks.slug, slug),
+  });
+}
+
+export async function listPublishedPolicyPages() {
+  const db = getDb();
+  const slugs = [
+    "legal.privacy",
+    "legal.terms",
+    "legal.membership",
+    "legal.conduct",
+    "legal.consultations",
+    "legal.meetings",
+    "legal.content",
+  ];
+  const rows = await db.query.contentBlocks.findMany({
+    orderBy: [asc(contentBlocks.sortOrder)],
+  });
+  return rows.filter((row) => slugs.includes(row.slug));
+}
+
+export async function recordPolicyConsent(input: {
+  userId: string;
+  slug: string;
+  version: string;
+}) {
+  const db = getDb();
+  await db.insert(consentRecords).values({
+    id: uuidv7(),
+    userId: input.userId,
+    purpose: `policy:${input.slug}:${input.version}`,
+    granted: true,
+  });
 }
 
 export async function getPublishedContentBySlug(slug: string) {

@@ -49,3 +49,4 @@ export {
   buildTrustedUrl,
   type NotificationEventType,
 };
+export { shouldEnqueueTransactionalEmail } from "./email-gate";
