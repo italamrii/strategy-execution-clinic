@@ -44,7 +44,7 @@
   --duration-fast: 180ms;
   --duration-md: 280ms;
   --duration-slow: 400ms;
-  --header-bg: color-mix(in srgb, var(--clinic-surface) 94%, transparent);
+  --header-bg: var(--clinic-surface);
   --header-shadow: 0 8px 30px rgb(14 26 43 / 0.045);
 }
 
@@ -65,8 +65,12 @@
   --shadow-rest: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 24px rgb(0 0 0 / 0.28);
   --shadow-raised: 0 2px 8px rgb(0 0 0 / 0.4), 0 16px 40px rgb(0 0 0 / 0.32);
   --shadow-overlay: 0 24px 64px rgb(0 0 0 / 0.5);
-  --header-bg: color-mix(in srgb, var(--clinic-surface) 92%, transparent);
+  --header-bg: var(--clinic-surface);
   --header-shadow: 0 8px 30px rgb(0 0 0 / 0.35);
+}
+
+[data-theme="dark"] .text-navy {
+  color: var(--clinic-ink);
 }
 
 @theme inline {

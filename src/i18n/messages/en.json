@@ -461,6 +461,7 @@
     "qrLabel": "Verification QR",
     "qrAlt": "QR code linking to public verification",
     "qrHint": "Scan to verify membership status",
+    "leaderBadge": "Approved track leader (visual badge)",
     "publicProfileTitle": "Verified member",
     "viewVerification": "View authoritative verification"
   },

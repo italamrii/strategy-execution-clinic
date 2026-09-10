@@ -58,9 +58,9 @@ function CardMesh({
       <mesh ref={front} position={[0, 0, 0.028]}>
         <RoundedBox args={[3.2, 2, 0.04]} radius={0.06} smoothness={4}>
           <meshPhysicalMaterial
-            color="#ffffff"
+            color="#0B1D33"
             roughness={0.28}
-            metalness={0.08}
+            metalness={0.18}
             clearcoat={0.35}
             clearcoatRoughness={0.4}
           />
@@ -84,7 +84,7 @@ function CardMesh({
       <Text
         position={[-1.35, 0.35, 0.05]}
         fontSize={0.22}
-        color="#152238"
+        color="#F7F3EA"
         anchorX="left"
         anchorY="top"
         maxWidth={2.7}
@@ -94,7 +94,7 @@ function CardMesh({
       <Text
         position={[-1.35, -0.05, 0.05]}
         fontSize={0.13}
-        color="#4B5563"
+        color="#C6B994"
         anchorX="left"
         anchorY="top"
         maxWidth={2.7}
@@ -147,6 +147,7 @@ export function MembershipCard3D({
   variant,
   fallback,
   ariaLabel,
+  credentialId,
 }: {
   memberName: string;
   typeLabel: string;
@@ -154,6 +155,7 @@ export function MembershipCard3D({
   variant: string;
   fallback: ReactNode;
   ariaLabel: string;
+  credentialId: string;
 }) {
   const [mode, setMode] = useState<"3d" | "fallback">("fallback");
   const [flipped, setFlipped] = useState(false);
@@ -179,6 +181,8 @@ export function MembershipCard3D({
       className="relative mx-auto aspect-[1.6/1] w-full max-w-xl"
       role="img"
       aria-label={ariaLabel}
+      data-testid="membership-card"
+      data-credential-id={credentialId}
       onPointerMove={(event) => {
         const rect = event.currentTarget.getBoundingClientRect();
         const x = (event.clientY - rect.top - rect.height / 2) / rect.height;
@@ -187,14 +191,21 @@ export function MembershipCard3D({
       }}
       onPointerLeave={() => setTilt({ x: 0, y: 0 })}
     >
+      <p className="sr-only" data-testid="public-code">
+        {publicCode}
+      </p>
       <button
         type="button"
         className="absolute inset-0 z-10 cursor-pointer bg-transparent"
         aria-label={ariaLabel}
         onClick={() => setFlipped((value) => !value)}
       />
-      <Canvas camera={{ position: [0, 0, 4.8], fov: 35 }} dpr={[1, 1.5]} className="!h-full !w-full">
-        <color attach="background" args={["#f7f5f1"]} />
+      <Canvas
+        camera={{ position: [0, 0, 4.8], fov: 35 }}
+        dpr={[1, 1.5]}
+        className="!h-full !w-full"
+        gl={{ alpha: true, antialias: true }}
+      >
         <ambientLight intensity={0.55} />
         <directionalLight position={[3, 4, 5]} intensity={1.1} />
         <directionalLight position={[-4, 2, -2]} intensity={0.35} />
