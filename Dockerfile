@@ -39,11 +39,12 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/src ./src
+COPY --from=build /app/tsconfig.json ./tsconfig.json
 COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/.next/static ./.next/static
 USER clinic
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -qO- http://127.0.0.1:3000/api/health || exit 1
-CMD ["sh", "-c", "./node_modules/.bin/tsx scripts/db-migrate.ts && node server.js"]
+CMD ["sh", "-c", "./node_modules/.bin/tsx --tsconfig ./tsconfig.json scripts/db-migrate.ts && exec node server.js"]
 
 
